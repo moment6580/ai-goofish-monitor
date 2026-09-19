@@ -501,27 +501,81 @@ def build_market_reference(
     item: dict,
     current_market_items: list[dict],
     historical_snapshots: list[dict],
+    snapshots_by_item: Optional[dict[str, list[dict]]] = None,
+    current_market_summary: Optional[dict] = None,
+    history_summary: Optional[dict] = None,
+    market_summary: Optional[dict] = None,
 ) -> dict:
-    current_market_records = []
-    for market_item in current_market_items:
-        price = parse_price_value(market_item.get("当前售价"))
-        if price is None:
-            continue
-        current_market_records.append({"price": price})
+    """构建商品价格参考。
 
-    market_snapshot = _summarize_prices(current_market_records)
-    history_summary = _summarize_prices(_dedupe_latest(historical_snapshots, "item_id"))
+    批量场景（爬取主链路）可先构建 `snapshots_by_item` 索引并预计算三个摘要，
+    逐商品调用即为 O(1)，避免每个商品重复全量扫描历史快照。
+    """
+    if current_market_summary is None:
+        current_market_summary = summarize_current_market(current_market_items)
+    if history_summary is None:
+        history_summary = summarize_snapshots_latest(historical_snapshots)
+
+    item_id = str(item.get("商品ID") or "")
+    item_snapshots = None
+    if snapshots_by_item is not None:
+        item_snapshots = snapshots_by_item.get(item_id, [])
+
     item_context = build_item_price_context(
         historical_snapshots,
-        item_id=str(item.get("商品ID") or ""),
+        item_id=item_id,
         current_price=parse_price_value(item.get("当前售价")),
+        item_snapshots=item_snapshots,
+        market_summary=market_summary,
     )
     return {
-        "当前搜索样本": market_snapshot,
+        "当前搜索样本": current_market_summary,
         "历史价格概览": history_summary,
         "本商品价格位置": item_context,
         "关键词": keyword,
     }
+
+
+def summarize_snapshots_latest(snapshots: Iterable[dict]) -> dict:
+    """按 item_id 去重取最新后汇总（供批量场景复用）。"""
+    return _summarize_prices(_dedupe_latest(snapshots, "item_id"))
+
+
+def summarize_current_market(items: Iterable[dict]) -> dict:
+    """汇总"当前搜索结果页"商品的价格（供批量场景复用）。"""
+    records = []
+    for market_item in items:
+        price = parse_price_value(market_item.get("当前售价"))
+        if price is None:
+            continue
+        records.append({"price": price})
+    return _summarize_prices(records)
+
+
+def build_snapshot_index(snapshots: Iterable[dict]) -> dict[str, list[dict]]:
+    """构建 item_id -> 快照列表 索引。"""
+    index: dict[str, list[dict]] = {}
+    for snapshot in snapshots:
+        item_id = str(snapshot.get("item_id") or "").strip()
+        if not item_id:
+            continue
+        index.setdefault(item_id, []).append(snapshot)
+    return index
+
+
+def summarize_latest_run(snapshots: list[dict]) -> dict:
+    """取"最后一次运行(run)"的快照并汇总（供批量场景复用）。
+
+    与旧逻辑一致：以最后一条快照的 run_id 作为最新一次运行。
+    """
+    if not snapshots:
+        return _summarize_prices([])
+    latest_run_id = str(snapshots[-1].get("run_id") or "")
+    latest_run = [
+        record for record in snapshots
+        if str(record.get("run_id") or "") == latest_run_id
+    ]
+    return _summarize_prices(_dedupe_latest(latest_run, "item_id"))
 
 
 def _empty_insights() -> dict:

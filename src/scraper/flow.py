@@ -52,8 +52,12 @@ from src.services.item_analysis_dispatcher import (
 )
 from src.services.price_history_service import (
     build_market_reference,
+    build_snapshot_index,
     load_price_snapshots,
     record_market_snapshots,
+    summarize_current_market,
+    summarize_latest_run,
+    summarize_snapshots_latest,
 )
 from src.services.result_storage_service import load_processed_link_keys
 from src.services.seller_profile_cache import SellerProfileCache
@@ -106,6 +110,15 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
     history_run_id = datetime.now().strftime("%Y%m%d%H%M%S")
     history_seen_item_ids: set[str] = set()
     historical_snapshots = load_price_snapshots(keyword)
+    # 预构建 item_id -> 快照索引与去重摘要，逐商品查询降为 O(1)；
+    # 每页新增快照后增量更新，避免每个商品都全量扫描历史。
+    snapshot_index = build_snapshot_index(historical_snapshots)
+    latest_snapshot_by_item = {
+        item_id: snaps[-1] for item_id, snaps in snapshot_index.items() if snaps
+    }
+    history_summary = summarize_snapshots_latest(latest_snapshot_by_item.values())
+    current_run_snapshots: list[dict] = []
+    market_summary = summarize_latest_run(historical_snapshots)
     result_filename = build_result_filename(keyword)
     processed_links = load_processed_link_keys(keyword)
     if processed_links:
@@ -611,16 +624,33 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
                     )
                     if not basic_items:
                         break
-                    historical_snapshots.extend(
-                        record_market_snapshots(
-                            keyword=keyword,
-                            task_name=task_config.get("task_name", "Untitled Task"),
-                            items=basic_items,
-                            run_id=history_run_id,
-                            snapshot_time=datetime.now().isoformat(),
-                            seen_item_ids=history_seen_item_ids,
-                        )
+                    new_snapshots = record_market_snapshots(
+                        keyword=keyword,
+                        task_name=task_config.get("task_name", "Untitled Task"),
+                        items=basic_items,
+                        run_id=history_run_id,
+                        snapshot_time=datetime.now().isoformat(),
+                        seen_item_ids=history_seen_item_ids,
                     )
+                    historical_snapshots.extend(new_snapshots)
+                    for snapshot in new_snapshots:
+                        item_id = str(snapshot.get("item_id") or "").strip()
+                        if not item_id:
+                            continue
+                        snapshot_index.setdefault(item_id, []).append(snapshot)
+                        latest_snapshot_by_item[item_id] = snapshot
+                        current_run_snapshots.append(snapshot)
+
+                    # 每页重算一次（而非每个商品），历史概览与市场摘要均为 O(本页新增)
+                    history_summary = summarize_snapshots_latest(
+                        latest_snapshot_by_item.values()
+                    )
+                    market_summary = (
+                        summarize_snapshots_latest(current_run_snapshots)
+                        if current_run_snapshots
+                        else summarize_latest_run(historical_snapshots)
+                    )
+                    current_market_summary = summarize_current_market(basic_items)
 
                     total_items_on_page = len(basic_items)
                     for i, item_data in enumerate(basic_items, 1):
@@ -747,6 +777,10 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
                                     item=item_data,
                                     current_market_items=basic_items,
                                     historical_snapshots=historical_snapshots,
+                                    snapshots_by_item=snapshot_index,
+                                    current_market_summary=current_market_summary,
+                                    history_summary=history_summary,
+                                    market_summary=market_summary,
                                 )
                                 final_record["价格参考"] = price_reference
                                 final_record["price_insight"] = price_reference.get(

@@ -3,11 +3,16 @@ import pytest
 from src.infrastructure.persistence.sqlite_connection import init_schema
 from src.services.price_history_service import (
     build_latest_market_summary,
+    build_market_reference,
     build_price_history_insights,
+    build_snapshot_index,
     load_latest_market_snapshots,
     load_price_snapshots_for_items,
     load_price_snapshots_since,
     record_market_snapshots,
+    summarize_current_market,
+    summarize_latest_run,
+    summarize_snapshots_latest,
 )
 
 
@@ -120,3 +125,50 @@ def test_build_price_history_insights_visible_scope():
     empty = build_price_history_insights("sony a7m4", visible_item_ids=set())
     assert empty["market_summary"]["sample_count"] == 0
     assert empty["latest_snapshot_at"] is None
+
+def test_build_market_reference_precomputed_matches_internal():
+    """预计算索引路径必须与逐条内部计算路径结果完全一致（P1 优化等价性）。"""
+    _seed()
+    target = _item("1", 9500)
+    page_items = [_item("1", 9500), _item("2", 12000), _item("3", 10500)]
+
+    # 旧路径：不传预计算值，内部全量扫描
+    baseline = build_market_reference(
+        keyword="sony a7m4",
+        item=target,
+        current_market_items=page_items,
+        historical_snapshots=load_latest_market_snapshots("sony a7m4"),
+    )
+
+    # 新路径：一次性构建索引 + 预计算摘要
+    snapshots = load_latest_market_snapshots("sony a7m4")
+    index = build_snapshot_index(snapshots)
+    latest_by_item = {iid: rows[-1] for iid, rows in index.items() if rows}
+    optimized = build_market_reference(
+        keyword="sony a7m4",
+        item=target,
+        current_market_items=page_items,
+        historical_snapshots=snapshots,
+        snapshots_by_item=index,
+        current_market_summary=summarize_current_market(page_items),
+        history_summary=summarize_snapshots_latest(latest_by_item.values()),
+        market_summary=summarize_latest_run(snapshots),
+    )
+
+    assert optimized == baseline
+
+
+def test_incremental_index_matches_full_dedupe():
+    """增量维护的 latest_by_item 应等价于对全量快照做 dedupe_latest。"""
+    from src.services.price_history_service import _dedupe_latest
+
+    _seed()
+    snapshots = load_latest_market_snapshots("sony a7m4")
+    index = build_snapshot_index(snapshots)
+    latest_by_item = {iid: rows[-1] for iid, rows in index.items() if rows}
+
+    incremental = summarize_snapshots_latest(latest_by_item.values())
+    full = summarize_snapshots_latest(snapshots)
+
+    assert incremental == full
+    assert incremental["sample_count"] == len(_dedupe_latest(snapshots, "item_id"))
