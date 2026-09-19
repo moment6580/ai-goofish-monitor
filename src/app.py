@@ -26,6 +26,7 @@ from src.api.dependencies import (
 from src.services.task_service import TaskService
 from src.services.process_service import ProcessService
 from src.services.scheduler_service import SchedulerService
+from src.services.spawn_registry import reap_orphan_spiders
 from src.services.task_log_cleanup_service import cleanup_task_logs
 from src.services.task_generation_service import TaskGenerationService
 from src.infrastructure.persistence.sqlite_bootstrap import bootstrap_sqlite_storage
@@ -69,6 +70,11 @@ async def lifespan(app: FastAPI):
     print("正在启动应用...")
     bootstrap_sqlite_storage()
     cleanup_task_logs(keep_days=get_app_settings().task_log_retention_days)
+
+    # 回收上次异常退出遗留的孤儿爬虫进程
+    reaped = reap_orphan_spiders()
+    if reaped:
+        print(f"已回收 {len(reaped)} 个孤儿爬虫进程: {', '.join(reaped)}")
 
     # 重置所有任务状态为停止
     task_repo = SqliteTaskRepository()

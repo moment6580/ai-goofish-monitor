@@ -347,7 +347,7 @@ async def scrape_user_profile(context, user_id: str) -> dict:
     page = await context.new_page()
 
     # 为各项异步任务准备Future和数据容器
-    head_api_future = asyncio.get_event_loop().create_future()
+    head_api_future = asyncio.get_running_loop().create_future()
 
     all_items, all_ratings = [], []
     stop_item_scrolling, stop_rating_scrolling = asyncio.Event(), asyncio.Event()

@@ -15,6 +15,7 @@ from src.ai_handler import send_ntfy_notification
 from src.config import STATE_FILE
 from src.failure_guard import FailureGuard
 from src.infrastructure.persistence.sqlite_task_repository import find_task_by_name_sync
+from src.services import spawn_registry
 from src.utils import build_task_log_path
 
 STOP_TIMEOUT_SECONDS = 20
@@ -128,6 +129,7 @@ class ProcessService:
         self.log_paths[task_id] = log_file_path
         self.log_handles[task_id] = log_file_handle
         self.task_names[task_id] = task_name
+        spawn_registry.record_spawn(task_id, process.pid, task_name)
         self.exit_watchers[task_id] = asyncio.create_task(self._watch_process_exit(process))
 
     async def start_task(self, task_id: int, task_name: str) -> bool:
@@ -207,6 +209,7 @@ class ProcessService:
         self.processes.pop(task_id, None)
         self.log_paths.pop(task_id, None)
         self.task_names.pop(task_id, None)
+        spawn_registry.remove_entry(task_id)
         self._close_log_handle(self.log_handles.pop(task_id, None))
         self.exit_watchers.pop(task_id, None)
 
