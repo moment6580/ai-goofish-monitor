@@ -1,15 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ResultInsights } from '@/types/result.d.ts'
 import PriceTrendChart from './PriceTrendChart.vue'
 import { formatDateTime } from '@/i18n'
+import { Button } from '@/components/ui/button'
+import Badge from '@/components/ui/badge/Badge.vue'
+import {
+  LineChart,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+} from 'lucide-vue-next'
 
 const props = defineProps<{
   insights: ResultInsights | null
   selectedTaskLabel?: string | null
 }>()
 const { t } = useI18n()
+const isCollapsed = ref(false)
 
 const summaryCards = computed(() => {
   if (!props.insights) return []
@@ -48,67 +57,108 @@ const latestSnapshotText = computed(() => {
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-lg border bg-card">
-    <div class="grid gap-5 p-5 lg:grid-cols-[1.15fr_0.85fr]">
-      <div class="space-y-5">
-        <div class="space-y-1.5">
-          <h2 class="text-lg font-semibold tracking-tight">
-            {{ selectedTaskLabel || t('results.insights.defaultTitle') }}
-          </h2>
-          <p class="max-w-2xl text-sm leading-6 text-muted-foreground">
-            {{ t('results.insights.subtitle') }}
-          </p>
+  <section class="overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition-all">
+    <!-- 面板标题与折叠栏 (Cult UI 风格) -->
+    <div class="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-muted/20">
+      <div class="flex items-center gap-2.5">
+        <div class="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <LineChart class="h-4 w-4" />
         </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-semibold tracking-tight">
+              {{ selectedTaskLabel || t('results.insights.defaultTitle') }}
+            </h2>
+            <Badge variant="outline" class="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground">
+              行情分析
+            </Badge>
+          </div>
+        </div>
+      </div>
 
-        <div class="grid gap-3 md:grid-cols-3">
+      <div class="flex items-center gap-2">
+        <span
+          v-if="insights?.market_summary.sample_count"
+          class="hidden sm:inline-flex text-xs text-muted-foreground"
+        >
+          样本总量 {{ insights.market_summary.sample_count }} 件
+        </span>
+
+        <Button
+          size="sm"
+          variant="ghost"
+          class="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+          @click="isCollapsed = !isCollapsed"
+        >
+          <span class="text-xs">{{ isCollapsed ? '展开行情' : '收起行情' }}</span>
+          <component :is="isCollapsed ? ChevronDown : ChevronUp" class="ml-1 h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+
+    <!-- 可折叠内容区 -->
+    <div v-show="!isCollapsed" class="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1.2fr_0.8fr]">
+      <!-- 左侧：3个核心价格指标 + 每日趋势曲线图 -->
+      <div class="space-y-4">
+        <div class="grid gap-2.5 grid-cols-3">
           <article
             v-for="card in summaryCards"
             :key="card.label"
-            class="rounded-md border bg-muted/40 p-4"
+            class="rounded-lg border border-border/70 bg-muted/30 p-3"
           >
-            <p class="text-xs text-muted-foreground">{{ card.label }}</p>
-            <p class="mt-2 text-xl font-semibold tabular-nums tracking-tight">{{ card.value }}</p>
-            <p class="mt-1.5 text-xs text-muted-foreground">{{ card.hint }}</p>
+            <p class="text-[11px] text-muted-foreground">{{ card.label }}</p>
+            <p class="mt-1 text-lg font-bold tabular-nums tracking-tight">{{ card.value }}</p>
+            <p class="mt-0.5 text-[10px] text-muted-foreground/80 truncate">{{ card.hint }}</p>
           </article>
         </div>
 
         <PriceTrendChart :points="insights?.daily_trend || []" />
       </div>
 
-      <div class="space-y-4">
-        <div class="rounded-lg border p-5">
-          <p class="text-xs font-medium text-muted-foreground">Trend Reading</p>
-          <p class="mt-3 text-2xl font-semibold tabular-nums tracking-tight">
-            {{ t('results.insights.snapshotCount', { count: insights?.market_summary.sample_count || 0 }) }}
-          </p>
-          <p class="mt-2 text-sm leading-6 text-muted-foreground">
+      <!-- 右侧：Kokonut UI 风格行情解读与区间卡片 -->
+      <div class="space-y-3">
+        <div class="rounded-lg border border-border/70 bg-muted/20 p-4">
+          <div class="flex items-center justify-between text-xs text-muted-foreground">
+            <span class="flex items-center gap-1 font-medium text-foreground">
+              <Sparkles class="h-3.5 w-3.5 text-primary" />
+              市场走势速读
+            </span>
+            <span class="tabular-nums font-semibold text-primary">
+              {{ t('results.insights.snapshotCount', { count: insights?.market_summary.sample_count || 0 }) }}
+            </span>
+          </div>
+
+          <p class="mt-2 text-xs leading-relaxed text-muted-foreground">
             {{ t('results.insights.trendReading') }}
           </p>
         </div>
 
-        <div class="rounded-lg border p-5">
-          <p class="text-xs font-medium text-muted-foreground">Snapshot</p>
-          <p class="mt-3 text-sm leading-6 text-muted-foreground">
-            {{ latestSnapshotText }}
-          </p>
-          <div class="mt-4 grid gap-2 text-sm text-muted-foreground">
-            <div class="rounded-md bg-muted/50 px-3 py-2.5">
-              {{ t('results.insights.currentMedian') }}
-              <span class="font-medium text-foreground">
+        <div class="rounded-lg border border-border/70 bg-card p-4 space-y-2.5">
+          <div class="flex items-center justify-between text-xs text-muted-foreground">
+            <span class="font-medium text-foreground">价格统计区间</span>
+            <span class="text-[11px] truncate max-w-[160px]">{{ latestSnapshotText }}</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 pt-1 text-xs">
+            <div class="rounded-md bg-muted/40 p-2 text-center">
+              <p class="text-[10px] text-muted-foreground">{{ t('results.insights.currentMedian') }}</p>
+              <p class="mt-0.5 font-semibold tabular-nums">
                 {{ insights?.market_summary.median_price ? `¥${insights.market_summary.median_price}` : '—' }}
-              </span>
+              </p>
             </div>
-            <div class="rounded-md bg-muted/50 px-3 py-2.5">
-              {{ t('results.insights.historyMin') }}
-              <span class="font-medium text-foreground">
+
+            <div class="rounded-md bg-muted/40 p-2 text-center">
+              <p class="text-[10px] text-muted-foreground">{{ t('results.insights.historyMin') }}</p>
+              <p class="mt-0.5 font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
                 {{ insights?.history_summary.min_price ? `¥${insights.history_summary.min_price}` : '—' }}
-              </span>
+              </p>
             </div>
-            <div class="rounded-md bg-muted/50 px-3 py-2.5">
-              {{ t('results.insights.historyMax') }}
-              <span class="font-medium text-foreground">
+
+            <div class="rounded-md bg-muted/40 p-2 text-center">
+              <p class="text-[10px] text-muted-foreground">{{ t('results.insights.historyMax') }}</p>
+              <p class="mt-0.5 font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
                 {{ insights?.history_summary.max_price ? `¥${insights.history_summary.max_price}` : '—' }}
-              </span>
+              </p>
             </div>
           </div>
         </div>

@@ -8,9 +8,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import {
+  Layers,
+  RotateCw,
+  ShieldAlert,
+  Download,
+  Trash2,
+  Sparkles,
+  Target,
+  Eye,
+  EyeOff,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
+} from 'lucide-vue-next'
 
 interface FileOption {
   value: string
@@ -52,16 +64,9 @@ const selectedLabel = computed(() => {
   return match ? match.label : t('results.filters.taskNameLabel', { task: t('common.unnamed') })
 })
 
-const labelClass = computed(() => {
-  const classes = ['transition-opacity', 'duration-200']
-  if (!props.isReady || !props.selectedFile || options.value.length === 0) {
-    classes.push('text-muted-foreground')
-  }
-  classes.push(props.isReady ? 'opacity-100' : 'opacity-70')
-  return classes.join(' ')
-})
-
 const isSelectDisabled = computed(() => !props.isReady || options.value.length === 0)
+
+const isAllMode = computed(() => !props.aiRecommendedOnly && !props.keywordRecommendedOnly)
 
 const emit = defineEmits<{
   (e: 'update:selectedFile', value: string): void
@@ -76,136 +81,198 @@ const emit = defineEmits<{
   (e: 'manage-blacklist'): void
 }>()
 
-function handleToggleAiRecommended(value: boolean) {
-  emit('update:aiRecommendedOnly', value)
-  if (value) {
+function selectAll() {
+  emit('update:aiRecommendedOnly', false)
+  emit('update:keywordRecommendedOnly', false)
+}
+
+function handleToggleAi() {
+  if (props.aiRecommendedOnly) {
+    emit('update:aiRecommendedOnly', false)
+  } else {
+    emit('update:aiRecommendedOnly', true)
     emit('update:keywordRecommendedOnly', false)
   }
 }
 
-function handleToggleKeywordRecommended(value: boolean) {
-  emit('update:keywordRecommendedOnly', value)
-  if (value) {
+function handleToggleKeyword() {
+  if (props.keywordRecommendedOnly) {
+    emit('update:keywordRecommendedOnly', false)
+  } else {
+    emit('update:keywordRecommendedOnly', true)
     emit('update:aiRecommendedOnly', false)
   }
+}
+
+function toggleSortOrder() {
+  emit('update:sortOrder', props.sortOrder === 'asc' ? 'desc' : 'asc')
 }
 </script>
 
 <template>
-  <div class="rounded-lg border bg-card p-4">
-    <div class="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-      <div class="space-y-2">
-        <Label class="text-xs font-medium text-muted-foreground">{{ t('results.title') }}</Label>
+  <div class="rounded-xl border border-border/80 bg-card p-3.5 shadow-sm space-y-3">
+    <!-- 第一行：结果集切换与主操作栏 (Cult UI 风格) -->
+    <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <!-- 结果集选择器 -->
+      <div class="flex items-center gap-2 flex-1 max-w-lg">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <Layers class="h-4 w-4" />
+        </div>
+
         <Select
           :model-value="props.selectedFile || undefined"
           @update:model-value="(value) => emit('update:selectedFile', value as string)"
         >
-          <SelectTrigger class="w-full" :disabled="isSelectDisabled">
-            <span :class="labelClass">
+          <SelectTrigger class="h-9 w-full text-xs font-medium" :disabled="isSelectDisabled">
+            <span class="truncate">
               {{ selectedLabel }}
             </span>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem v-for="option in options" :key="option.value" :value="option.value">
+            <SelectItem v-for="option in options" :key="option.value" :value="option.value" class="text-xs">
               {{ option.label }}
             </SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      <div class="space-y-2">
-        <Label class="text-xs font-medium text-muted-foreground">{{ t('results.filters.sortByCrawlTime') }}</Label>
+      <!-- 右侧动作组 (紧凑图标+文字) -->
+      <div class="flex items-center gap-1.5 self-end sm:self-auto">
+        <Button
+          size="sm"
+          variant="outline"
+          class="h-8 gap-1 text-xs"
+          @click="emit('refresh')"
+          :disabled="props.isLoading"
+        >
+          <RotateCw class="h-3.5 w-3.5" :class="{ 'animate-spin': props.isLoading }" />
+          <span>{{ t('common.refresh') }}</span>
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          class="h-8 gap-1 text-xs"
+          @click="emit('manage-blacklist')"
+          :disabled="props.isLoading || !props.selectedFile"
+        >
+          <ShieldAlert class="h-3.5 w-3.5 text-muted-foreground" />
+          <span class="hidden sm:inline">{{ t('results.filters.manageBlacklist') }}</span>
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          class="h-8 gap-1 text-xs"
+          @click="emit('export')"
+          :disabled="props.isLoading || !props.selectedFile"
+        >
+          <Download class="h-3.5 w-3.5 text-muted-foreground" />
+          <span class="hidden sm:inline">{{ t('results.filters.exportCsv') }}</span>
+        </Button>
+
+        <Button
+          size="sm"
+          variant="ghost"
+          class="h-8 gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+          @click="emit('delete')"
+          :disabled="props.isLoading || !props.selectedFile"
+        >
+          <Trash2 class="h-3.5 w-3.5" />
+          <span class="hidden sm:inline">{{ t('common.delete') }}</span>
+        </Button>
+      </div>
+    </div>
+
+    <!-- 分割线 -->
+    <div class="h-px w-full bg-border/60"></div>
+
+    <!-- 第二行：Commerce UI 风格快速胶囊筛选器 + 排序 -->
+    <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <!-- 胶囊筛选器 (Segmented Pills) -->
+      <div class="flex flex-wrap items-center gap-1.5">
+        <!-- 全部商品 -->
+        <button
+          type="button"
+          @click="selectAll"
+          class="inline-flex h-7 items-center rounded-md px-2.5 text-xs font-medium transition-colors"
+          :class="isAllMode
+            ? 'bg-primary text-primary-foreground shadow-sm'
+            : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'"
+        >
+          {{ t('common.all') }}
+        </button>
+
+        <!-- 仅看 AI 推荐 -->
+        <button
+          type="button"
+          @click="handleToggleAi"
+          class="inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-xs font-medium transition-colors"
+          :class="props.aiRecommendedOnly
+            ? 'bg-emerald-600 text-white shadow-sm dark:bg-emerald-500'
+            : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'"
+        >
+          <Sparkles class="h-3 w-3" />
+          {{ t('results.filters.aiOnly') }}
+        </button>
+
+        <!-- 仅看关键词推荐 -->
+        <button
+          type="button"
+          @click="handleToggleKeyword"
+          class="inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-xs font-medium transition-colors"
+          :class="props.keywordRecommendedOnly
+            ? 'bg-blue-600 text-white shadow-sm dark:bg-blue-500'
+            : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'"
+        >
+          <Target class="h-3 w-3" />
+          {{ t('results.filters.keywordOnly') }}
+        </button>
+
+        <!-- 显示已屏蔽 -->
+        <button
+          type="button"
+          @click="emit('update:includeHidden', !props.includeHidden)"
+          class="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors"
+          :class="props.includeHidden
+            ? 'border border-border bg-accent text-accent-foreground'
+            : 'text-muted-foreground/80 hover:text-foreground'"
+        >
+          <component :is="props.includeHidden ? Eye : EyeOff" class="h-3 w-3" />
+          <span>{{ t('results.filters.includeHidden') }}</span>
+        </button>
+      </div>
+
+      <!-- 排序组合 (Sort Selector + Asc/Desc) -->
+      <div class="flex items-center gap-1.5 self-end sm:self-auto">
+        <span class="text-xs text-muted-foreground/80 flex items-center gap-1">
+          <ArrowUpDown class="h-3 w-3" />
+        </span>
+
         <Select
           :model-value="props.sortBy"
           @update:model-value="(value) => emit('update:sortBy', value as any)"
         >
-          <SelectTrigger class="w-full">
+          <SelectTrigger class="h-7 w-[110px] text-xs font-medium border-border/80 bg-muted/30">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="crawl_time">{{ t('results.filters.sortByCrawlTime') }}</SelectItem>
-            <SelectItem value="publish_time">{{ t('results.filters.sortByPublishTime') }}</SelectItem>
-            <SelectItem value="price">{{ t('results.filters.sortByPrice') }}</SelectItem>
-            <SelectItem value="keyword_hit_count">{{ t('results.filters.sortByKeywordHits') }}</SelectItem>
+            <SelectItem value="crawl_time" class="text-xs">{{ t('results.filters.sortByCrawlTime') }}</SelectItem>
+            <SelectItem value="publish_time" class="text-xs">{{ t('results.filters.sortByPublishTime') }}</SelectItem>
+            <SelectItem value="price" class="text-xs">{{ t('results.filters.sortByPrice') }}</SelectItem>
+            <SelectItem value="keyword_hit_count" class="text-xs">{{ t('results.filters.sortByKeywordHits') }}</SelectItem>
           </SelectContent>
         </Select>
-      </div>
 
-      <div class="space-y-2">
-        <Label class="text-xs font-medium text-muted-foreground">{{ t('results.filters.asc') }} / {{ t('results.filters.desc') }}</Label>
-        <Select
-          :model-value="props.sortOrder"
-          @update:model-value="(value) => emit('update:sortOrder', value as any)"
+        <button
+          type="button"
+          @click="toggleSortOrder"
+          :title="props.sortOrder === 'desc' ? t('results.filters.desc') : t('results.filters.asc')"
+          class="inline-flex h-7 items-center gap-1 rounded-md border border-border/80 bg-muted/30 px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
-          <SelectTrigger class="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="desc">{{ t('results.filters.desc') }}</SelectItem>
-            <SelectItem value="asc">{{ t('results.filters.asc') }}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
-
-    <div class="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div class="flex items-center space-x-2">
-          <Checkbox
-            id="ai-recommended-only"
-            :model-value="props.aiRecommendedOnly"
-            @update:modelValue="(value) => handleToggleAiRecommended(value === true)"
-          />
-          <Label for="ai-recommended-only" class="cursor-pointer">{{ t('results.filters.aiOnly') }}</Label>
-        </div>
-
-        <div class="flex items-center space-x-2">
-          <Checkbox
-            id="keyword-recommended-only"
-            :model-value="props.keywordRecommendedOnly"
-            @update:modelValue="(value) => handleToggleKeywordRecommended(value === true)"
-          />
-          <Label for="keyword-recommended-only" class="cursor-pointer">{{ t('results.filters.keywordOnly') }}</Label>
-        </div>
-
-        <div class="flex items-center space-x-2">
-          <Checkbox
-            id="include-hidden"
-            :model-value="props.includeHidden"
-            @update:modelValue="(value) => emit('update:includeHidden', value === true)"
-          />
-          <Label for="include-hidden" class="cursor-pointer">{{ t('results.filters.includeHidden') }}</Label>
-        </div>
-      </div>
-
-      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
-        <Button @click="emit('refresh')" :disabled="props.isLoading">
-          {{ t('common.refresh') }}
-        </Button>
-
-        <Button
-          variant="outline"
-          @click="emit('manage-blacklist')"
-          :disabled="props.isLoading || !props.selectedFile"
-        >
-          {{ t('results.filters.manageBlacklist') }}
-        </Button>
-
-        <Button
-          variant="outline"
-          @click="emit('export')"
-          :disabled="props.isLoading || !props.selectedFile"
-        >
-          {{ t('results.filters.exportCsv') }}
-        </Button>
-
-        <Button
-          variant="destructive"
-          @click="emit('delete')"
-          :disabled="props.isLoading || !props.selectedFile"
-        >
-          {{ t('results.filters.deleteResult') }}
-        </Button>
+          <component :is="props.sortOrder === 'desc' ? ArrowDown : ArrowUp" class="h-3 w-3" />
+          <span>{{ props.sortOrder === 'desc' ? t('results.filters.desc') : t('results.filters.asc') }}</span>
+        </button>
       </div>
     </div>
   </div>
