@@ -1,3 +1,13 @@
+"""爬虫主流程：搜索 -> 筛选 -> 详情采集 -> AI 分析调度。
+
+各环节的辅助实现拆分在本包的其他模块中：
+- browser: 启动参数/上下文/反检测
+- config_parsing: 任务配置解析
+- failure: 登录失效与失败通知
+- user_profile: 卖家主页采集
+"""
+from __future__ import annotations
+
 import asyncio
 import json
 import os
@@ -7,7 +17,6 @@ from typing import Optional
 from urllib.parse import urlencode
 
 from playwright.async_api import (
-    Response,
     TimeoutError as PlaywrightTimeoutError,
     async_playwright,
 )
@@ -16,24 +25,15 @@ from src.ai_handler import (
     download_all_images,
     get_ai_analysis,
     send_ntfy_notification,
-    cleanup_task_images,
 )
 from src.config import (
     AI_DEBUG_MODE,
     DETAIL_API_URL_PATTERN,
-    LOGIN_IS_EDGE,
     RUN_HEADLESS,
-    RUNNING_IN_DOCKER,
     SKIP_AI_ANALYSIS,
     STATE_FILE,
 )
-from src.parsers import (
-    _parse_search_results_json,
-    _parse_user_items_data,
-    calculate_reputation_from_ratings,
-    parse_ratings_data,
-    parse_user_head_data,
-)
+from src.parsers import _parse_search_results_json
 from src.utils import (
     format_registration_days,
     get_link_unique_key,
@@ -43,7 +43,6 @@ from src.utils import (
     save_to_jsonl,
 )
 from src.rotation import RotationPool, load_state_files, parse_proxy_pool, RotationItem
-from src.failure_guard import FailureGuard
 from src.services.account_strategy_service import resolve_account_runtime_plan
 from src.infrastructure.persistence.storage_names import build_result_filename
 from src.services.item_analysis_dispatcher import (
@@ -61,385 +60,22 @@ from src.services.search_pagination import (
     advance_search_page,
     is_search_results_response,
 )
-
-
-class RiskControlError(Exception):
-    pass
-
-
-class LoginRequiredError(Exception):
-    """Raised when Goofish redirects to the passport/mini_login flow."""
-
-
-FAILURE_GUARD = FailureGuard()
-EDGE_DOCKER_WARNING_PRINTED = False
-
-
-def _is_login_url(url: str) -> bool:
-    if not url:
-        return False
-    lowered = url.lower()
-    return "passport.goofish.com" in lowered or "mini_login" in lowered
-
-
-def _resolve_browser_channel() -> str:
-    global EDGE_DOCKER_WARNING_PRINTED
-    if RUNNING_IN_DOCKER:
-        if LOGIN_IS_EDGE and not EDGE_DOCKER_WARNING_PRINTED:
-            print(
-                "检测到 LOGIN_IS_EDGE=true，但 Docker 镜像未内置 Edge，"
-                "任务运行时将改用 Chromium。"
-            )
-            EDGE_DOCKER_WARNING_PRINTED = True
-        return "chromium"
-    return "msedge" if LOGIN_IS_EDGE else "chrome"
-
-
-def _should_analyze_images(task_config: dict) -> bool:
-    raw_value = task_config.get("analyze_images", True)
-    if isinstance(raw_value, bool):
-        return raw_value
-    return str(raw_value).strip().lower() not in {"false", "0", "no", "off"}
-
-
-def _format_failure_reason(reason: str, limit: int = 500) -> str:
-    if not reason:
-        return "未知错误"
-    cleaned = " ".join(str(reason).split())
-    if len(cleaned) <= limit:
-        return cleaned
-    return cleaned[: limit - 3] + "..."
-
-
-async def _notify_task_failure(
-    task_config: dict, reason: str, *, cookie_path: Optional[str]
-) -> None:
-    task_name = task_config.get("task_name", "未命名任务")
-    keyword = task_config.get("keyword", "")
-    formatted_reason = _format_failure_reason(reason)
-
-    # Some failures are deterministic misconfiguration and should pause/notify immediately.
-    pause_immediately = any(
-        marker in formatted_reason
-        for marker in (
-            "未找到可用的代理地址",
-            "未找到可用的登录状态文件",
-        )
-    )
-
-    guard_result = FAILURE_GUARD.record_failure(
-        task_name,
-        formatted_reason,
-        cookie_path=cookie_path,
-        min_failures_to_pause=1 if pause_immediately else None,
-    )
-
-    if not guard_result.get("should_notify"):
-        print(
-            f"[FailureGuard] 任务 '{task_name}' 失败计数 {guard_result.get('consecutive_failures')}/{FAILURE_GUARD.threshold}，暂不通知。"
-        )
-        return
-
-    paused_until = guard_result.get("paused_until")
-    paused_until_str = (
-        paused_until.strftime("%Y-%m-%d %H:%M:%S") if paused_until else "N/A"
-    )
-
-    product_data = {
-        "商品标题": f"[任务异常] {task_name}",
-        "当前售价": "N/A",
-        "商品链接": "#",
-    }
-    notify_reason = (
-        f"任务运行失败(已连续 {guard_result.get('consecutive_failures')}/{FAILURE_GUARD.threshold} 次): {formatted_reason}"
-        f"\n任务: {task_name}"
-        f"\n关键词: {keyword or 'N/A'}"
-        f"\n已自动暂停重试，暂停到: {paused_until_str}"
-        f"\n修复后(更新登录态/cookies文件)将自动恢复。"
-    )
-
-    try:
-        await send_ntfy_notification(product_data, notify_reason)
-    except Exception as e:
-        print(f"发送任务异常通知失败: {e}")
-
-
-def _as_bool(value, default: bool = False) -> bool:
-    if value is None:
-        return default
-    if isinstance(value, bool):
-        return value
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
-
-
-def _as_int(value, default: int) -> int:
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _get_rotation_settings(task_config: dict) -> dict:
-    account_cfg = task_config.get("account_rotation") or {}
-    proxy_cfg = task_config.get("proxy_rotation") or {}
-
-    account_enabled = _as_bool(
-        account_cfg.get("enabled"),
-        _as_bool(os.getenv("ACCOUNT_ROTATION_ENABLED"), False),
-    )
-    account_mode = (
-        account_cfg.get("mode") or os.getenv("ACCOUNT_ROTATION_MODE", "per_task")
-    ).lower()
-    account_state_dir = account_cfg.get("state_dir") or os.getenv(
-        "ACCOUNT_STATE_DIR", "state"
-    )
-    account_retry_limit = _as_int(
-        account_cfg.get("retry_limit"),
-        _as_int(os.getenv("ACCOUNT_ROTATION_RETRY_LIMIT"), 2),
-    )
-    account_blacklist_ttl = _as_int(
-        account_cfg.get("blacklist_ttl_sec"),
-        _as_int(os.getenv("ACCOUNT_BLACKLIST_TTL"), 300),
-    )
-
-    proxy_enabled = _as_bool(
-        proxy_cfg.get("enabled"), _as_bool(os.getenv("PROXY_ROTATION_ENABLED"), False)
-    )
-    proxy_mode = (
-        proxy_cfg.get("mode") or os.getenv("PROXY_ROTATION_MODE", "per_task")
-    ).lower()
-    proxy_pool = proxy_cfg.get("proxy_pool") or os.getenv("PROXY_POOL", "")
-    proxy_retry_limit = _as_int(
-        proxy_cfg.get("retry_limit"),
-        _as_int(os.getenv("PROXY_ROTATION_RETRY_LIMIT"), 2),
-    )
-    proxy_blacklist_ttl = _as_int(
-        proxy_cfg.get("blacklist_ttl_sec"),
-        _as_int(os.getenv("PROXY_BLACKLIST_TTL"), 300),
-    )
-
-    return {
-        "account_enabled": account_enabled,
-        "account_mode": account_mode,
-        "account_state_dir": account_state_dir,
-        "account_retry_limit": max(1, account_retry_limit),
-        "account_blacklist_ttl": max(0, account_blacklist_ttl),
-        "proxy_enabled": proxy_enabled,
-        "proxy_mode": proxy_mode,
-        "proxy_pool": proxy_pool,
-        "proxy_retry_limit": max(1, proxy_retry_limit),
-        "proxy_blacklist_ttl": max(0, proxy_blacklist_ttl),
-    }
-
-
-def _get_ai_analysis_concurrency(task_config: dict) -> int:
-    configured = task_config.get("ai_analysis_concurrency")
-    default = _as_int(os.getenv("AI_ANALYSIS_CONCURRENCY"), 2)
-    return max(1, _as_int(configured, default))
-
-
-def _get_seller_profile_cache_ttl(task_config: dict) -> int:
-    configured = task_config.get("seller_profile_cache_ttl")
-    default = _as_int(os.getenv("SELLER_PROFILE_CACHE_TTL"), 1800)
-    return max(0, _as_int(configured, default))
-
-
-def _default_context_options() -> dict:
-    return {
-        "user_agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
-        "viewport": {"width": 412, "height": 915},
-        "device_scale_factor": 2.625,
-        "is_mobile": True,
-        "has_touch": True,
-        "locale": "zh-CN",
-        "timezone_id": "Asia/Shanghai",
-        "permissions": ["geolocation"],
-        "geolocation": {"longitude": 121.4737, "latitude": 31.2304},
-        "color_scheme": "light",
-    }
-
-
-def _clean_kwargs(options: dict) -> dict:
-    return {k: v for k, v in options.items() if v is not None}
-
-
-def _looks_like_mobile(ua: str) -> Optional[bool]:
-    if not ua:
-        return None
-    ua_lower = ua.lower()
-    if "mobile" in ua_lower or "android" in ua_lower or "iphone" in ua_lower:
-        return True
-    if "windows" in ua_lower or "macintosh" in ua_lower:
-        return False
-    return None
-
-
-def _build_context_overrides(snapshot: dict) -> dict:
-    env = snapshot.get("env") or {}
-    headers = snapshot.get("headers") or {}
-    navigator = env.get("navigator") or {}
-    screen = env.get("screen") or {}
-    intl = env.get("intl") or {}
-
-    overrides = {}
-
-    ua = (
-        headers.get("User-Agent")
-        or headers.get("user-agent")
-        or navigator.get("userAgent")
-    )
-    if ua:
-        overrides["user_agent"] = ua
-
-    accept_language = headers.get("Accept-Language") or headers.get("accept-language")
-    locale = None
-    if accept_language:
-        locale = accept_language.split(",")[0].strip()
-    elif navigator.get("language"):
-        locale = navigator["language"]
-    if locale:
-        overrides["locale"] = locale
-
-    tz = intl.get("timeZone")
-    if tz:
-        overrides["timezone_id"] = tz
-
-    width = screen.get("width")
-    height = screen.get("height")
-    if isinstance(width, (int, float)) and isinstance(height, (int, float)):
-        overrides["viewport"] = {"width": int(width), "height": int(height)}
-
-    dpr = screen.get("devicePixelRatio")
-    if isinstance(dpr, (int, float)):
-        overrides["device_scale_factor"] = float(dpr)
-
-    touch_points = navigator.get("maxTouchPoints")
-    if isinstance(touch_points, (int, float)):
-        overrides["has_touch"] = touch_points > 0
-
-    mobile_flag = _looks_like_mobile(ua or "")
-    if mobile_flag is not None:
-        overrides["is_mobile"] = mobile_flag
-
-    return _clean_kwargs(overrides)
-
-
-def _build_extra_headers(raw_headers: Optional[dict]) -> dict:
-    if not raw_headers:
-        return {}
-    excluded = {"cookie", "content-length"}
-    headers = {}
-    for key, value in raw_headers.items():
-        if not key or key.lower() in excluded or value is None:
-            continue
-        headers[key] = value
-    return headers
-
-
-async def scrape_user_profile(context, user_id: str) -> dict:
-    """
-    【新版】访问指定用户的个人主页，按顺序采集其摘要信息、完整的商品列表和完整的评价列表。
-    """
-    print(f"   -> 开始采集用户ID: {user_id} 的完整信息...")
-    profile_data = {}
-    page = await context.new_page()
-
-    # 为各项异步任务准备Future和数据容器
-    head_api_future = asyncio.get_running_loop().create_future()
-
-    all_items, all_ratings = [], []
-    stop_item_scrolling, stop_rating_scrolling = asyncio.Event(), asyncio.Event()
-
-    async def handle_response(response: Response):
-        # 捕获头部摘要API
-        if (
-            "mtop.idle.web.user.page.head" in response.url
-            and not head_api_future.done()
-        ):
-            try:
-                head_api_future.set_result(await response.json())
-                print(f"      [API捕获] 用户头部信息... 成功")
-            except Exception as e:
-                if not head_api_future.done():
-                    head_api_future.set_exception(e)
-
-        # 捕获商品列表API
-        elif "mtop.idle.web.xyh.item.list" in response.url:
-            try:
-                data = await response.json()
-                all_items.extend(data.get("data", {}).get("cardList", []))
-                print(f"      [API捕获] 商品列表... 当前已捕获 {len(all_items)} 件")
-                if not data.get("data", {}).get("nextPage", True):
-                    stop_item_scrolling.set()
-            except Exception as e:
-                stop_item_scrolling.set()
-
-        # 捕获评价列表API
-        elif "mtop.idle.web.trade.rate.list" in response.url:
-            try:
-                data = await response.json()
-                all_ratings.extend(data.get("data", {}).get("cardList", []))
-                print(f"      [API捕获] 评价列表... 当前已捕获 {len(all_ratings)} 条")
-                if not data.get("data", {}).get("nextPage", True):
-                    stop_rating_scrolling.set()
-            except Exception as e:
-                stop_rating_scrolling.set()
-
-    page.on("response", handle_response)
-
-    try:
-        # --- 任务1: 导航并采集头部信息 ---
-        await page.goto(
-            f"https://www.goofish.com/personal?userId={user_id}",
-            wait_until="domcontentloaded",
-            timeout=20000,
-        )
-        head_data = await asyncio.wait_for(head_api_future, timeout=15)
-        profile_data = await parse_user_head_data(head_data)
-
-        # --- 任务2: 滚动加载所有商品 (默认页面) ---
-        print("      [采集阶段] 开始采集该用户的商品列表...")
-        await random_sleep(2, 4)  # 等待第一页商品API完成
-        while not stop_item_scrolling.is_set():
-            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            try:
-                await asyncio.wait_for(stop_item_scrolling.wait(), timeout=8)
-            except asyncio.TimeoutError:
-                print("      [滚动超时] 商品列表可能已加载完毕。")
-                break
-        profile_data["卖家发布的商品列表"] = await _parse_user_items_data(all_items)
-
-        # --- 任务3: 点击并采集所有评价 ---
-        print("      [采集阶段] 开始采集该用户的评价列表...")
-        rating_tab_locator = page.locator("//div[text()='信用及评价']/ancestor::li")
-        if await rating_tab_locator.count() > 0:
-            await rating_tab_locator.click()
-            await random_sleep(3, 5)  # 等待第一页评价API完成
-
-            while not stop_rating_scrolling.is_set():
-                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                try:
-                    await asyncio.wait_for(stop_rating_scrolling.wait(), timeout=8)
-                except asyncio.TimeoutError:
-                    print("      [滚动超时] 评价列表可能已加载完毕。")
-                    break
-
-            profile_data["卖家收到的评价列表"] = await parse_ratings_data(all_ratings)
-            reputation_stats = await calculate_reputation_from_ratings(all_ratings)
-            profile_data.update(reputation_stats)
-        else:
-            print("      [警告] 未找到评价选项卡，跳过评价采集。")
-
-    except Exception as e:
-        print(f"   [错误] 采集用户 {user_id} 信息时发生错误: {e}")
-    finally:
-        page.remove_listener("response", handle_response)
-        await page.close()
-        print(f"   -> 用户 {user_id} 信息采集完成。")
-
-    return profile_data
+from src.scraper.browser import (
+    _build_context_overrides,
+    _build_extra_headers,
+    _clean_kwargs,
+    _default_context_options,
+    _resolve_browser_channel,
+)
+from src.scraper.config_parsing import (
+    _get_ai_analysis_concurrency,
+    _get_rotation_settings,
+    _get_seller_profile_cache_ttl,
+    _should_analyze_images,
+)
+from src.scraper.exceptions import LoginRequiredError, RiskControlError
+from src.scraper.failure import _is_login_url, _notify_task_failure
+from src.scraper.user_profile import scrape_user_profile
 
 
 async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
