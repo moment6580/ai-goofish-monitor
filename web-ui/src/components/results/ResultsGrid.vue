@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import type { ResultItem } from '@/types/result.d.ts'
 import { useI18n } from 'vue-i18n'
+import { Button } from '@/components/ui/button'
+import { ChevronDown } from 'lucide-vue-next'
 import ResultCard from './ResultCard.vue'
 
 interface Props {
@@ -8,13 +11,32 @@ interface Props {
   isLoading: boolean
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const { t } = useI18n()
 
 const emit = defineEmits<{
   (e: 'toggle-block', item: ResultItem): void
 }>()
 const skeletonItems = Array.from({ length: 8 }, (_, index) => index)
+
+// 增量渲染：首屏渲染 60 条，滚动到底部或点击加载更多
+const PAGE_SIZE = 60
+const visibleCount = ref(PAGE_SIZE)
+
+const visibleResults = computed(() => props.results.slice(0, visibleCount.value))
+const hasMore = computed(() => visibleCount.value < props.results.length)
+
+// 结果集变化（切换筛选/文件）时重置分页
+watch(
+  () => props.results,
+  () => {
+    visibleCount.value = PAGE_SIZE
+  },
+)
+
+function loadMore() {
+  visibleCount.value += PAGE_SIZE
+}
 </script>
 
 <template>
@@ -45,8 +67,22 @@ const skeletonItems = Array.from({ length: 8 }, (_, index) => index)
     <div v-else-if="results.length === 0" class="rounded-lg border border-dashed py-16 text-center text-sm text-muted-foreground">
       {{ t('results.grid.empty') }}
     </div>
-    <div v-else class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      <ResultCard v-for="item in results" :key="item.商品信息.商品ID" :item="item" @toggle-block="emit('toggle-block', $event)" />
-    </div>
+    <template v-else>
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <ResultCard
+          v-for="item in visibleResults"
+          :key="item.商品信息.商品ID"
+          :item="item"
+          @toggle-block="emit('toggle-block', $event)"
+        />
+      </div>
+
+      <div v-if="hasMore" class="mt-4 flex flex-col items-center gap-1.5">
+        <Button variant="outline" size="sm" class="text-xs" @click="loadMore">
+          <ChevronDown class="h-3.5 w-3.5" />
+          {{ t('results.grid.loadMore', { shown: visibleCount, total: results.length }) }}
+        </Button>
+      </div>
+    </template>
   </div>
 </template>

@@ -179,6 +179,7 @@ const enUS = {
     grid: {
       loading: 'Loading results...',
       empty: 'No items matched the current filters.',
+      loadMore: 'Showing {shown}/{total}, load more',
     },
     insights: {
       defaultTitle: 'Price Trend Insight',

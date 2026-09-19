@@ -179,6 +179,7 @@ const zhCN = {
     grid: {
       loading: '正在加载结果...',
       empty: '没有找到符合条件的商品记录。',
+      loadMore: '已显示 {shown}/{total} 条，加载更多',
     },
     insights: {
       defaultTitle: '价格走势洞察',
