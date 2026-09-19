@@ -12,6 +12,7 @@ import asyncio
 import json
 import os
 import random
+import re
 from datetime import datetime
 from typing import Optional
 from urllib.parse import urlencode
@@ -455,13 +456,39 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
                                 p.strip() for p in region_filter.split("/") if p.strip()
                             ]
 
+                            async def _first_matching(column_locator, selectors, has_text=None):
+                                """按候选顺序返回第一个能匹配到的 locator（哈希类名易变，逐级降级）。"""
+                                for sel in selectors:
+                                    candidate = (
+                                        column_locator.locator(sel, has_text=has_text)
+                                        if has_text
+                                        else column_locator.locator(sel)
+                                    )
+                                    if await candidate.count():
+                                        return candidate.first
+                                return None
+
+                            # 哈希后缀会随闲鱼前端发版变化，逐级降级到语义化选择器
+                            PROVINCE_ITEM_SELECTORS = (
+                                ".provItem--QAdOx8nD",
+                                "[class*='provItem']",
+                                "[class*='rovItem']",
+                            )
+                            REGION_SUBMIT_SELECTORS = (
+                                "div.searchBtn--Ic6RKcAb",
+                                "[class*='searchBtn']",
+                                "[class*='SearchBtn']",
+                            )
+
                             async def _click_in_column(
                                 column_locator, text_value: str, desc: str
                             ) -> None:
-                                option = column_locator.locator(
-                                    ".provItem--QAdOx8nD", has_text=text_value
-                                ).first
-                                if await option.count():
+                                option = await _first_matching(
+                                    column_locator,
+                                    PROVINCE_ITEM_SELECTORS,
+                                    has_text=text_value,
+                                )
+                                if option is not None:
                                     await option.click()
                                     await random_sleep(1.5, 2)
                                     try:
@@ -492,10 +519,17 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
                                 )
                                 await random_sleep(1, 2)
 
-                            search_btn = popover.locator(
-                                "div.searchBtn--Ic6RKcAb"
-                            ).first
-                            if await search_btn.count():
+                            search_btn = await _first_matching(
+                                popover, REGION_SUBMIT_SELECTORS
+                            )
+                            if search_btn is None:
+                                # 终极兜底：按"查看 N 件宝贝"按钮文案匹配
+                                text_btn = popover.get_by_text(
+                                    re.compile(r"查看.{0,12}件")
+                                ).first
+                                if await text_btn.count():
+                                    search_btn = text_btn
+                            if search_btn is not None:
                                 try:
                                     async with page.expect_response(
                                         is_search_results_response,
