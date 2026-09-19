@@ -71,8 +71,8 @@ const areaPath = computed(() => {
 </script>
 
 <template>
-  <div class="app-surface-subtle p-4">
-    <div class="mb-3 flex flex-col gap-3 text-xs uppercase tracking-[0.22em] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+  <div class="rounded-md border bg-muted/30 p-4">
+    <div class="mb-3 flex flex-col gap-3 text-xs font-medium text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
       <span>Daily Price Curve</span>
       <div class="flex items-center gap-3">
         <span class="inline-flex items-center gap-1">
@@ -86,7 +86,7 @@ const areaPath = computed(() => {
       </div>
     </div>
 
-    <div v-if="validPoints.length === 0" class="rounded-2xl border border-dashed border-slate-200 bg-white/70 px-4 py-10 text-center text-sm text-slate-500">
+    <div v-if="validPoints.length === 0" class="rounded-md border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
       {{ t('results.chart.noTrend') }}
     </div>
 

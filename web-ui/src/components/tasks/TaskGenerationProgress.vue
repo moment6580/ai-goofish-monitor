@@ -23,28 +23,28 @@ const statusMeta = computed(() => {
 })
 
 function resolveStepDotClass(step: TaskGenerationStep) {
-  if (step.status === 'completed') return 'border-emerald-500 bg-emerald-500'
-  if (step.status === 'running') return 'border-amber-500 bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.18)]'
+  if (step.status === 'completed') return 'border-success bg-success'
+  if (step.status === 'running') return 'border-warning bg-warning shadow-[0_0_0_4px_hsl(var(--warning)/0.18)]'
   if (step.status === 'failed') return 'border-red-500 bg-red-500'
-  return 'border-slate-300 bg-white'
+  return 'border-input bg-background'
 }
 
 function resolveStepTextClass(step: TaskGenerationStep) {
-  if (step.status === 'completed') return 'text-slate-700'
-  if (step.status === 'running') return 'text-slate-900'
-  if (step.status === 'failed') return 'text-red-600'
-  return 'text-slate-400'
+  if (step.status === 'completed') return 'text-foreground'
+  if (step.status === 'running') return 'text-foreground'
+  if (step.status === 'failed') return 'text-destructive'
+  return 'text-muted-foreground'
 }
 </script>
 
 <template>
-  <section class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+  <section class="rounded-lg border bg-muted/30 p-4">
     <div class="flex items-start justify-between gap-4">
       <div class="space-y-1">
-        <p class="text-sm font-semibold text-slate-900">
+        <p class="text-sm font-medium">
           {{ job.task_name }}
         </p>
-        <p class="text-sm text-slate-600">
+        <p class="text-sm text-muted-foreground">
           {{ job.message }}
         </p>
       </div>
@@ -70,7 +70,7 @@ function resolveStepTextClass(step: TaskGenerationStep) {
           <p
             v-if="step.message"
             class="text-xs"
-            :class="step.status === 'failed' ? 'text-red-500' : 'text-slate-500'"
+            :class="step.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'"
           >
             {{ step.message }}
           </p>
@@ -80,7 +80,7 @@ function resolveStepTextClass(step: TaskGenerationStep) {
 
     <p
       v-if="job.error"
-      class="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600"
+      class="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
     >
       {{ job.error }}
     </p>

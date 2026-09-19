@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Globe } from 'lucide-vue-next'
 import { useLocale } from '@/i18n'
 import { useI18n } from 'vue-i18n'
 
@@ -14,19 +13,18 @@ const localeOptions = [
 
 <template>
   <div
-    class="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-white/80 p-1 shadow-sm backdrop-blur"
+    class="inline-flex items-center gap-0.5 rounded-md border bg-muted/50 p-0.5"
     :aria-label="t('locale.switchLabel')"
     role="group"
   >
-    <span class="hidden pl-2 text-slate-400 sm:inline-flex">
-      <Globe class="h-4 w-4" />
-    </span>
     <button
       v-for="option in localeOptions"
       :key="option.value"
       type="button"
-      class="rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors sm:px-3"
-      :class="locale === option.value ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'"
+      class="rounded-[calc(var(--radius)-2px)] px-2 py-1 text-xs font-medium transition-colors"
+      :class="locale === option.value
+        ? 'bg-background text-foreground shadow-sm'
+        : 'text-muted-foreground hover:text-foreground'"
       @click="toggleLocale(option.value)"
     >
       <span class="sm:hidden">{{ option.shortLabel }}</span>

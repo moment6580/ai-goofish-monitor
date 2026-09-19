@@ -179,15 +179,15 @@ watch(selectedPrompt, async (value) => {
 </script>
 
 <template>
-  <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ t('settings.title') }}</h1>
-    
-    <div v-if="error" class="app-alert-error mb-4" role="alert">
+  <div class="space-y-6">
+    <h1 class="text-2xl font-semibold tracking-tight">{{ t('settings.title') }}</h1>
+
+    <div v-if="error" class="app-alert-error" role="alert">
       {{ error.message }}
     </div>
 
     <Tabs v-model="activeTab" class="w-full">
-      <TabsList class="mb-4 flex w-full flex-nowrap justify-start gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
+      <TabsList class="mb-4 flex w-full flex-nowrap justify-start gap-1 overflow-x-auto">
         <TabsTrigger class="shrink-0" value="ai">{{ t('settings.tabs.ai') }}</TabsTrigger>
         <TabsTrigger class="shrink-0" value="rotation">{{ t('settings.tabs.rotation') }}</TabsTrigger>
         <TabsTrigger class="shrink-0" value="notifications">{{ t('settings.tabs.notifications') }}</TabsTrigger>
@@ -214,7 +214,7 @@ watch(selectedPrompt, async (value) => {
                 type="password"
                 :placeholder="t('settings.ai.keyPlaceholder')"
               />
-              <p class="text-xs text-gray-500">
+              <p class="text-xs text-muted-foreground">
                 {{ systemStatus?.env_file.openai_api_key_set ? t('settings.ai.keyConfigured') : t('settings.ai.keyMissing') }}
               </p>
             </div>
@@ -227,7 +227,7 @@ watch(selectedPrompt, async (value) => {
               <Input v-model="aiSettings.PROXY_URL" placeholder="http://127.0.0.1:7890" />
             </div>
           </CardContent>
-          <CardContent v-else class="py-8 text-sm text-gray-500">
+          <CardContent v-else class="py-8 text-sm text-muted-foreground">
             {{ t('settings.ai.loading') }}
           </CardContent>
           <CardFooter v-if="isReady" class="flex gap-2">
@@ -273,50 +273,66 @@ watch(selectedPrompt, async (value) => {
               <div class="flex items-center justify-between border-b pb-4">
                 <div>
                   <h3 class="font-medium">{{ t('settings.status.scraper') }}</h3>
-                  <p class="text-sm text-gray-500">{{ t('settings.status.scraperDescription') }}</p>
+                  <p class="text-sm text-muted-foreground">{{ t('settings.status.scraperDescription') }}</p>
                 </div>
-                <span :class="systemStatus.scraper_running ? 'text-green-600 font-bold bg-green-50 px-3 py-1 rounded-full' : 'text-gray-500 bg-gray-100 px-3 py-1 rounded-full'">
+                <span
+                  class="rounded-full px-3 py-1 text-xs font-medium"
+                  :class="systemStatus.scraper_running
+                    ? 'bg-success/10 text-success'
+                    : 'bg-muted text-muted-foreground'"
+                >
                   {{ systemStatus.scraper_running ? t('common.running') : t('common.idle') }}
                 </span>
               </div>
 
               <!-- Env Config Status -->
               <div>
-                <div class="flex items-center justify-between mb-4">
+                <div class="mb-4 flex items-center justify-between">
                     <div>
                         <h3 class="font-medium">{{ t('settings.status.env') }}</h3>
-                        <p class="text-sm text-gray-500">{{ t('settings.status.envDescription') }}</p>
+                        <p class="text-sm text-muted-foreground">{{ t('settings.status.envDescription') }}</p>
                     </div>
-                    <span :class="systemStatus.env_file.exists ? 'text-green-600 font-bold bg-green-50 px-3 py-1 rounded-full' : 'text-red-600 font-bold bg-red-50 px-3 py-1 rounded-full'">
+                    <span
+                      class="rounded-full px-3 py-1 text-xs font-medium"
+                      :class="systemStatus.env_file.exists
+                        ? 'bg-success/10 text-success'
+                        : 'bg-destructive/10 text-destructive'"
+                    >
                         {{ systemStatus.env_file.exists ? t('settings.status.loaded') : t('settings.status.missing') }}
                     </span>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="p-3 border rounded-lg" :class="systemStatus.env_file.openai_api_key_set ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'">
-                        <div class="flex justify-between items-center">
-                            <span class="font-medium text-sm">OpenAI API Key</span>
-                            <span class="text-xs font-bold" :class="systemStatus.env_file.openai_api_key_set ? 'text-green-700' : 'text-yellow-700'">
+                    <div class="rounded-lg border p-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium">OpenAI API Key</span>
+                            <span
+                              class="text-xs font-medium"
+                              :class="systemStatus.env_file.openai_api_key_set ? 'text-success' : 'text-warning'"
+                            >
                                 {{ systemStatus.env_file.openai_api_key_set ? t('common.active') : t('common.inactive') }}
                             </span>
                         </div>
                     </div>
-                    
-                    <div class="p-3 border rounded-lg" :class="systemStatus.configured_notification_channels?.length ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'">
-                         <div class="flex justify-between items-center">
-                            <span class="font-medium text-sm">{{ t('settings.status.channels') }}</span>
-                             <span class="text-xs font-bold" :class="systemStatus.configured_notification_channels?.length ? 'text-green-700' : 'text-gray-500'">
+
+                    <div class="rounded-lg border p-3">
+                         <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium">{{ t('settings.status.channels') }}</span>
+                              <span
+                                class="text-xs font-medium"
+                                :class="systemStatus.configured_notification_channels?.length ? 'text-success' : 'text-muted-foreground'"
+                              >
                                 {{ systemStatus.configured_notification_channels?.length ? t('common.active') : t('common.inactive') }}
                             </span>
                         </div>
-                         <div class="text-xs text-gray-500 mt-1">
+                         <div class="mt-1 text-xs text-muted-foreground">
                             {{ systemStatus.configured_notification_channels?.join(', ') || t('settings.status.none') }}
                         </div>
                     </div>
                 </div>
               </div>
             </div>
-            <div v-else class="text-center py-8 text-gray-500">
+            <div v-else class="py-8 text-center text-muted-foreground">
                 {{ t('settings.status.fetching') }}
             </div>
           </CardContent>
@@ -331,7 +347,7 @@ watch(selectedPrompt, async (value) => {
             <CardDescription>{{ t('settings.prompts.description') }}</CardDescription>
           </CardHeader>
           <CardContent class="space-y-4">
-            <div v-if="promptError" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded">
+            <div v-if="promptError" class="app-alert-error">
               {{ promptError }}
             </div>
 
@@ -350,7 +366,7 @@ watch(selectedPrompt, async (value) => {
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <p v-if="!promptFiles.length && !isPromptLoading" class="text-sm text-gray-500">
+              <p v-if="!promptFiles.length && !isPromptLoading" class="text-sm text-muted-foreground">
                 {{ t('settings.prompts.none') }}
               </p>
             </div>

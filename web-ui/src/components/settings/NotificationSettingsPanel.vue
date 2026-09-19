@@ -182,8 +182,8 @@ async function handleTest(channel?: ChannelKey) {
 
 function resultClass(channel: ChannelKey) {
   return testResults[channel]?.success
-    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    : 'border-red-200 bg-red-50 text-red-700'
+    ? 'border-success/40 bg-success/10 text-success'
+    : 'border-destructive/40 bg-destructive/10 text-destructive'
 }
 
 function resolveChannelBadge(channel: ChannelKey) {
@@ -193,64 +193,64 @@ function resolveChannelBadge(channel: ChannelKey) {
 
 <template>
   <div class="space-y-4">
-    <Card class="app-surface overflow-hidden border-none">
+    <Card class="shadow-card">
       <CardHeader>
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div class="space-y-2">
-            <div class="flex items-center gap-2 text-slate-800">
-              <BellRing class="h-5 w-5 text-sky-600" />
+            <div class="flex items-center gap-2">
+              <BellRing class="h-5 w-5 text-muted-foreground" />
               <CardTitle>{{ t('notifyPanel.title') }}</CardTitle>
             </div>
             <CardDescription>{{ t('notifyPanel.description') }}</CardDescription>
           </div>
           <div class="flex flex-wrap gap-2">
-            <Badge variant="outline" class="border-sky-200 bg-sky-50 text-sky-700">{{ t('notifyPanel.enabledChannels', { channels: summaryText }) }}</Badge>
-            <Badge variant="outline" class="border-slate-200 bg-white text-slate-600">{{ t('notifyPanel.supportedVariables') }}</Badge>
+            <Badge variant="secondary" class="font-normal text-muted-foreground">{{ t('notifyPanel.enabledChannels', { channels: summaryText }) }}</Badge>
+            <Badge variant="outline" class="font-normal text-muted-foreground">{{ t('notifyPanel.supportedVariables') }}</Badge>
           </div>
         </div>
       </CardHeader>
       <CardContent class="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
-        <div class="app-surface-subtle p-4">
+        <div class="rounded-md border bg-muted/30 p-4">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="text-sm font-semibold text-slate-900">{{ t('notifyPanel.globalBehavior') }}</p>
-              <p class="text-sm text-slate-500">{{ t('notifyPanel.globalBehaviorDescription') }}</p>
+              <p class="text-sm font-medium">{{ t('notifyPanel.globalBehavior') }}</p>
+              <p class="text-sm text-muted-foreground">{{ t('notifyPanel.globalBehaviorDescription') }}</p>
             </div>
-            <div class="flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-3 py-2">
+            <div class="flex items-center gap-3 rounded-md border bg-background px-3 py-2">
               <Switch id="pcurl" :model-value="!!form.PCURL_TO_MOBILE" @update:model-value="(value) => form.PCURL_TO_MOBILE = !!value" />
-              <Label for="pcurl" class="text-sm text-slate-700">{{ t('notifyPanel.preferMobileLink') }}</Label>
+              <Label for="pcurl" class="text-sm">{{ t('notifyPanel.preferMobileLink') }}</Label>
             </div>
           </div>
         </div>
-        <div class="app-surface-subtle bg-slate-900/95 p-4 text-slate-100">
+        <div class="rounded-md border bg-muted/30 p-4">
           <div class="flex items-center gap-2 text-sm font-semibold">
-            <ShieldCheck class="h-4 w-4 text-emerald-300" />
+            <ShieldCheck class="h-4 w-4 text-muted-foreground" />
             {{ t('notifyPanel.configurationNotes') }}
           </div>
-          <p class="mt-2 text-sm leading-6 text-slate-300">{{ t('notifyPanel.configurationNotesDescription') }}</p>
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">{{ t('notifyPanel.configurationNotesDescription') }}</p>
         </div>
       </CardContent>
     </Card>
 
-    <div v-if="!isReady" class="app-surface py-10 text-center text-sm text-slate-500">
+    <div v-if="!isReady" class="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
       {{ t('notifyPanel.loading') }}
     </div>
 
     <div v-else class="grid gap-4">
-      <Card class="app-surface-subtle overflow-hidden border-l-4 border-l-sky-500">
-        <CardHeader><CardTitle class="flex items-center gap-2"><Radio class="h-4 w-4 text-sky-600" /> Ntfy</CardTitle><CardDescription>{{ t('notifyPanel.ntfy.description') }}</CardDescription></CardHeader>
+      <Card>
+        <CardHeader><CardTitle class="flex items-center gap-2"><Radio class="h-4 w-4 text-muted-foreground" /> Ntfy</CardTitle><CardDescription>{{ t('notifyPanel.ntfy.description') }}</CardDescription></CardHeader>
         <CardContent><Label>Ntfy Topic URL</Label><Input :model-value="form.NTFY_TOPIC_URL ?? ''" placeholder="https://ntfy.sh/topic" @update:model-value="(value) => updateField('NTFY_TOPIC_URL', String(value))" /></CardContent>
         <CardFooter class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Badge :variant="isChannelConfigured('ntfy') ? 'default' : 'outline'">{{ resolveChannelBadge('ntfy') }}</Badge><Button variant="outline" size="sm" :disabled="props.isSaving" @click="handleTest('ntfy')"><TestTube2 class="h-4 w-4" />{{ t('notifyPanel.testThisChannel') }}</Button></CardFooter>
       </Card>
 
       <div class="grid gap-4 xl:grid-cols-2">
-        <Card class="app-surface-subtle overflow-hidden border-l-4 border-l-amber-500">
+        <Card>
           <CardHeader><CardTitle>Bark</CardTitle><CardDescription>{{ t('notifyPanel.bark.description') }}</CardDescription></CardHeader>
-          <CardContent class="space-y-2"><Label>Bark URL</Label><Input :model-value="form.BARK_URL ?? ''" :placeholder="t('notifyPanel.secretPlaceholder')" @update:model-value="(value) => updateSecretField('BARK_URL', String(value))" /><p class="text-xs text-slate-500">{{ secretConfigured.BARK_URL ? t('notifyPanel.bark.configuredHint') : t('notifyPanel.notConfigured') }}</p></CardContent>
+          <CardContent class="space-y-2"><Label>Bark URL</Label><Input :model-value="form.BARK_URL ?? ''" :placeholder="t('notifyPanel.secretPlaceholder')" @update:model-value="(value) => updateSecretField('BARK_URL', String(value))" /><p class="text-xs text-muted-foreground">{{ secretConfigured.BARK_URL ? t('notifyPanel.bark.configuredHint') : t('notifyPanel.notConfigured') }}</p></CardContent>
           <CardFooter class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Badge :variant="isChannelConfigured('bark') ? 'default' : 'outline'">{{ resolveChannelBadge('bark') }}</Badge><div class="flex flex-wrap gap-2"><Button variant="ghost" size="sm" :disabled="props.isSaving" @click="clearChannel('bark')"><Trash2 class="h-4 w-4" />{{ t('notifyPanel.clear') }}</Button><Button variant="outline" size="sm" :disabled="props.isSaving" @click="handleTest('bark')"><TestTube2 class="h-4 w-4" />{{ t('notifyPanel.test') }}</Button></div></CardFooter>
         </Card>
 
-        <Card class="app-surface-subtle overflow-hidden border-l-4 border-l-violet-500">
+        <Card>
           <CardHeader><CardTitle>Gotify</CardTitle><CardDescription>{{ t('notifyPanel.gotify.description') }}</CardDescription></CardHeader>
           <CardContent class="grid gap-4 md:grid-cols-2">
             <div class="grid gap-2"><Label>Gotify URL</Label><Input :model-value="form.GOTIFY_URL ?? ''" placeholder="https://gotify.example.com" @update:model-value="(value) => updateField('GOTIFY_URL', String(value))" /></div>
@@ -261,13 +261,13 @@ function resolveChannelBadge(channel: ChannelKey) {
       </div>
 
       <div class="grid gap-4 xl:grid-cols-2">
-        <Card class="app-surface-subtle overflow-hidden border-l-4 border-l-emerald-500">
+        <Card>
           <CardHeader><CardTitle>{{ t('notifyPanel.wecom.title') }}</CardTitle><CardDescription>{{ t('notifyPanel.wecom.description') }}</CardDescription></CardHeader>
-          <CardContent class="space-y-2"><Label>{{ t('notifyPanel.wecom.urlLabel') }}</Label><Input :model-value="form.WX_BOT_URL ?? ''" :placeholder="t('notifyPanel.secretPlaceholder')" @update:model-value="(value) => updateSecretField('WX_BOT_URL', String(value))" /><p class="text-xs text-slate-500">{{ secretConfigured.WX_BOT_URL ? t('notifyPanel.wecom.configuredHint') : t('notifyPanel.notConfigured') }}</p></CardContent>
+          <CardContent class="space-y-2"><Label>{{ t('notifyPanel.wecom.urlLabel') }}</Label><Input :model-value="form.WX_BOT_URL ?? ''" :placeholder="t('notifyPanel.secretPlaceholder')" @update:model-value="(value) => updateSecretField('WX_BOT_URL', String(value))" /><p class="text-xs text-muted-foreground">{{ secretConfigured.WX_BOT_URL ? t('notifyPanel.wecom.configuredHint') : t('notifyPanel.notConfigured') }}</p></CardContent>
           <CardFooter class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Badge :variant="isChannelConfigured('wecom') ? 'default' : 'outline'">{{ resolveChannelBadge('wecom') }}</Badge><div class="flex flex-wrap gap-2"><Button variant="ghost" size="sm" :disabled="props.isSaving" @click="clearChannel('wecom')"><Trash2 class="h-4 w-4" />{{ t('notifyPanel.clear') }}</Button><Button variant="outline" size="sm" :disabled="props.isSaving" @click="handleTest('wecom')"><TestTube2 class="h-4 w-4" />{{ t('notifyPanel.test') }}</Button></div></CardFooter>
         </Card>
 
-        <Card class="app-surface-subtle overflow-hidden border-l-4 border-l-cyan-500">
+        <Card>
           <CardHeader><CardTitle>Telegram</CardTitle><CardDescription>{{ t('notifyPanel.telegram.description') }}</CardDescription></CardHeader>
           <CardContent class="grid gap-4 md:grid-cols-3">
             <div class="grid gap-2"><Label>Bot Token</Label><Input type="password" :model-value="form.TELEGRAM_BOT_TOKEN ?? ''" :placeholder="t('notifyPanel.secretKeepPlaceholder')" @update:model-value="(value) => updateSecretField('TELEGRAM_BOT_TOKEN', String(value))" /></div>
@@ -278,8 +278,8 @@ function resolveChannelBadge(channel: ChannelKey) {
         </Card>
       </div>
 
-      <Card class="app-surface-subtle overflow-hidden border-l-4 border-l-rose-500">
-        <CardHeader><CardTitle class="flex items-center gap-2"><Webhook class="h-4 w-4 text-rose-500" /> {{ t('notifyPanel.webhook.title') }}</CardTitle><CardDescription>{{ t('notifyPanel.webhook.description') }}</CardDescription></CardHeader>
+      <Card>
+        <CardHeader><CardTitle class="flex items-center gap-2"><Webhook class="h-4 w-4 text-muted-foreground" /> {{ t('notifyPanel.webhook.title') }}</CardTitle><CardDescription>{{ t('notifyPanel.webhook.description') }}</CardDescription></CardHeader>
         <CardContent class="grid gap-4">
           <div class="grid gap-4 md:grid-cols-2">
             <div class="grid gap-2"><Label>{{ t('notifyPanel.webhook.urlLabel') }}</Label><Input :model-value="form.WEBHOOK_URL ?? ''" :placeholder="t('notifyPanel.secretPlaceholder')" @update:model-value="(value) => updateSecretField('WEBHOOK_URL', String(value))" /></div>
@@ -293,23 +293,23 @@ function resolveChannelBadge(channel: ChannelKey) {
             <div class="grid gap-2"><Label>{{ t('notifyPanel.webhook.queryLabel') }}</Label><Textarea :model-value="form.WEBHOOK_QUERY_PARAMETERS ?? ''" :placeholder="webhookQueryPlaceholder" @update:model-value="(value) => updateField('WEBHOOK_QUERY_PARAMETERS', String(value))" /></div>
             <div class="grid gap-2"><Label>{{ t('notifyPanel.webhook.bodyLabel') }}</Label><Textarea :model-value="form.WEBHOOK_BODY ?? ''" :placeholder="webhookBodyPlaceholder" @update:model-value="(value) => updateField('WEBHOOK_BODY', String(value))" /></div>
           </div>
-          <div class="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 px-4 py-3 text-sm text-rose-700">
+          <div class="rounded-md border border-dashed bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
             <p>{{ t('notifyPanel.webhook.variablesHelp') }}</p>
-            <p class="mt-2 break-all font-mono text-xs text-rose-900">{{ webhookTemplateVariables }}</p>
+            <p class="mt-2 break-all font-mono text-xs">{{ webhookTemplateVariables }}</p>
           </div>
         </CardContent>
         <CardFooter class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Badge :variant="isChannelConfigured('webhook') ? 'default' : 'outline'">{{ resolveChannelBadge('webhook') }}</Badge><div class="flex flex-wrap gap-2"><Button variant="ghost" size="sm" :disabled="props.isSaving" @click="clearChannel('webhook')"><Trash2 class="h-4 w-4" />{{ t('notifyPanel.clear') }}</Button><Button variant="outline" size="sm" :disabled="props.isSaving" @click="handleTest('webhook')"><TestTube2 class="h-4 w-4" />{{ t('notifyPanel.test') }}</Button></div></CardFooter>
       </Card>
 
       <div v-for="channel in ['ntfy', 'bark', 'gotify', 'wecom', 'telegram', 'webhook']" :key="channel">
-        <div v-if="testResults[channel]" class="rounded-2xl border px-4 py-3 text-sm" :class="resultClass(channel as ChannelKey)">
+        <div v-if="testResults[channel]" class="rounded-md border px-4 py-3 text-sm" :class="resultClass(channel as ChannelKey)">
           {{ testResults[channel].label }}：{{ testResults[channel].message }}
         </div>
       </div>
     </div>
 
-    <div class="app-surface sticky bottom-0 z-10 flex flex-col gap-3 p-4 shadow-lg md:flex-row md:items-center md:justify-between">
-      <div class="flex items-center gap-2 text-sm text-slate-600"><Send class="h-4 w-4 text-slate-400" />{{ t('notifyPanel.footerHint') }}</div>
+    <div class="sticky bottom-0 z-10 flex flex-col gap-3 rounded-lg border bg-card p-4 shadow-card md:flex-row md:items-center md:justify-between">
+      <div class="flex items-center gap-2 text-sm text-muted-foreground"><Send class="h-4 w-4" />{{ t('notifyPanel.footerHint') }}</div>
       <div class="flex flex-col gap-2 sm:flex-row">
         <Button variant="outline" :disabled="props.isSaving" @click="handleTest()"><TestTube2 class="h-4 w-4" />{{ testingChannel === 'all' ? t('common.testing') : t('notifyPanel.testAll') }}</Button>
         <Button :disabled="props.isSaving" @click="handleSave"><Send class="h-4 w-4" />{{ t('notifyPanel.save') }}</Button>

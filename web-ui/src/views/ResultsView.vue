@@ -128,8 +128,8 @@ async function handleSaveBlacklistRules() {
 </script>
 
 <template>
-  <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">
+  <div class="space-y-6">
+    <h1 class="text-2xl font-semibold tracking-tight">
       {{ t('results.title') }}
     </h1>
 
@@ -185,7 +185,7 @@ async function handleSaveBlacklistRules() {
           </DialogDescription>
         </DialogHeader>
         <div class="space-y-2">
-          <label class="text-sm font-medium text-slate-700">
+          <label class="text-sm font-medium">
             {{ t('results.filters.blacklistRulesLabel') }}
           </label>
           <Textarea
@@ -193,7 +193,7 @@ async function handleSaveBlacklistRules() {
             class="min-h-[180px]"
             :placeholder="t('results.filters.blacklistRulesPlaceholder')"
           />
-          <p class="text-xs leading-5 text-slate-500">
+          <p class="text-xs leading-5 text-muted-foreground">
             {{ t('results.filters.blacklistRulesHint') }}
           </p>
         </div>

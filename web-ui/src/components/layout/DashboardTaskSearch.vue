@@ -167,87 +167,82 @@ onBeforeUnmount(() => {
   document.removeEventListener('mousedown', handlePointerDown)
 })
 </script>
-
 <template>
   <div ref="rootRef" class="relative w-full">
-    <Search class="absolute left-3 top-1/2 z-10 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors" />
+    <Search class="absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
     <input
       v-model="query"
       type="text"
       :placeholder="t('tasks.search.placeholder')"
-      class="w-full h-10 rounded-xl border border-slate-200/60 bg-slate-100/60 pl-10 pr-16 text-sm text-slate-700 transition-all outline-none focus:border-primary/40 focus:bg-white focus:ring-2 focus:ring-primary/15"
+      class="h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-14 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/30"
       @focus="openPanel"
       @keydown="handleKeydown"
     />
-    <kbd class="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] text-slate-400 shadow-sm">
+    <kbd class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
       ESC
     </kbd>
 
     <transition name="search-panel">
       <div
         v-if="shouldShowPanel"
-        class="absolute inset-x-0 top-[calc(100%+0.75rem)] overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_28px_70px_rgba(15,23,42,0.16)] backdrop-blur-xl"
+        class="absolute inset-x-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg"
       >
-        <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div class="flex items-center justify-between border-b px-4 py-3">
           <div>
-            <p class="text-xs font-black uppercase tracking-[0.24em] text-slate-400">{{ panelTitle }}</p>
-            <p class="mt-1 text-xs text-slate-500">
+            <p class="text-xs font-medium text-muted-foreground">{{ panelTitle }}</p>
+            <p class="mt-1 text-xs text-muted-foreground/80">
               {{ normalizedQuery ? t('tasks.search.resultCount', { count: visibleTasks.length }) : t('tasks.search.enterHint') }}
             </p>
           </div>
-          <Badge variant="outline" class="border-slate-200 bg-slate-50 text-[10px] text-slate-500">
+          <Badge variant="secondary" class="text-[10px] text-muted-foreground">
             {{ t('routes.tasks') }}
           </Badge>
         </div>
 
-        <div v-if="isLoading" class="flex items-center gap-2 px-4 py-6 text-sm text-slate-500">
-          <LoaderCircle class="h-4 w-4 animate-spin text-primary" />
+        <div v-if="isLoading" class="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground">
+          <LoaderCircle class="h-4 w-4 animate-spin" />
           {{ t('tasks.search.loading') }}
         </div>
 
-        <div v-else-if="error" class="px-4 py-6 text-sm text-rose-600">
+        <div v-else-if="error" class="px-4 py-6 text-sm text-destructive">
           {{ error }}
         </div>
 
         <div v-else-if="visibleTasks.length === 0" class="px-4 py-6">
-          <p class="text-sm font-semibold text-slate-700">{{ t('tasks.search.emptyTitle') }}</p>
-          <p class="mt-1 text-xs text-slate-500">{{ t('tasks.search.emptyDescription') }}</p>
+          <p class="text-sm font-medium">{{ t('tasks.search.emptyTitle') }}</p>
+          <p class="mt-1 text-xs text-muted-foreground">{{ t('tasks.search.emptyDescription') }}</p>
         </div>
 
-        <div v-else class="divide-y divide-slate-100">
+        <div v-else class="divide-y divide-border/60">
           <button
             v-for="(task, index) in visibleTasks"
             :key="task.id"
             class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors"
-            :class="index === highlightedIndex ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-800'"
+            :class="index === highlightedIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'"
             @mouseenter="highlightedIndex = index"
             @click="selectTask(task)"
           >
             <div
-              class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
-              :class="task.is_running ? 'bg-emerald-400' : task.enabled ? 'bg-sky-400' : 'bg-slate-300'"
+              class="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+              :class="task.is_running ? 'bg-success' : task.enabled ? 'bg-primary' : 'bg-muted-foreground/40'"
             />
+
             <div class="min-w-0 flex-1">
               <div class="flex items-center justify-between gap-3">
-                <p class="truncate text-sm font-bold">{{ task.task_name }}</p>
+                <p class="truncate text-sm font-medium">{{ task.task_name }}</p>
                 <Badge
                   variant="outline"
-                  class="shrink-0 text-[10px]"
-                  :class="index === highlightedIndex ? 'border-white/20 bg-white/10 text-white' : 'border-slate-200 text-slate-500'"
+                  class="shrink-0 text-[10px] text-muted-foreground"
                 >
                   {{ getTaskStatus(task) }}
                 </Badge>
               </div>
-              <p
-                class="mt-1 truncate text-xs"
-                :class="index === highlightedIndex ? 'text-white/70' : 'text-slate-500'"
-              >
+              <p class="mt-1 truncate text-xs text-muted-foreground">
                 {{ getTaskMeta(task) }}
               </p>
               <p
                 v-if="task.description"
-                class="mt-1 truncate text-xs"
-                :class="index === highlightedIndex ? 'text-white/70' : 'text-slate-400'"
+                class="mt-1 truncate text-xs text-muted-foreground/70"
               >
                 {{ task.description }}
               </p>
@@ -255,9 +250,9 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 px-4 py-3 text-[11px] text-slate-500">
+        <div class="flex items-center justify-between border-t bg-muted/40 px-4 py-2.5 text-[11px] text-muted-foreground">
           <div class="flex items-center gap-2">
-            <Sparkles class="h-3.5 w-3.5 text-primary" />
+            <Sparkles class="h-3.5 w-3.5" />
             {{ t('tasks.search.footerHint') }}
           </div>
           <div class="hidden items-center gap-2 md:flex">

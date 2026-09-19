@@ -122,25 +122,25 @@ onMounted(fetchAccounts)
 </script>
 
 <template>
-  <div>
-    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <div class="space-y-6">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800">{{ t('accounts.title') }}</h1>
-        <p class="text-sm text-gray-500 mt-1">{{ t('accounts.description') }}</p>
+        <h1 class="text-2xl font-semibold tracking-tight">{{ t('accounts.title') }}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{{ t('accounts.description') }}</p>
       </div>
       <Button class="w-full sm:w-auto" @click="openCreateDialog">{{ t('accounts.add') }}</Button>
     </div>
 
-    <Card class="app-surface mb-6 border-none">
+    <Card>
       <CardHeader>
         <CardTitle>{{ t('accounts.cookieGuide.title') }}</CardTitle>
       </CardHeader>
-      <CardContent class="text-sm text-gray-600">
+      <CardContent class="text-sm text-muted-foreground">
         <ol class="list-decimal list-inside space-y-1">
           <li>
             {{ t('accounts.cookieGuide.step1Prefix') }}
             <a
-              class="text-blue-600 hover:underline"
+              class="text-primary hover:underline"
               href="https://chromewebstore.google.com/detail/xianyu-login-state-extrac/eidlpfjiodpigmfcahkmlenhppfklcoa"
               target="_blank"
               rel="noopener noreferrer"
@@ -149,7 +149,7 @@ onMounted(fetchAccounts)
           <li>
             {{ t('accounts.cookieGuide.step2Prefix') }}
             <a
-              class="text-blue-600 hover:underline"
+              class="text-primary hover:underline"
               href="https://www.goofish.com"
               target="_blank"
               rel="noopener noreferrer"
@@ -162,7 +162,7 @@ onMounted(fetchAccounts)
       </CardContent>
     </Card>
 
-    <Card class="app-surface border-none">
+    <Card>
       <CardHeader>
         <CardTitle>{{ t('accounts.list.title') }}</CardTitle>
         <CardDescription>{{ t('accounts.list.description') }}</CardDescription>
@@ -175,14 +175,14 @@ onMounted(fetchAccounts)
             v-else
             v-for="account in accounts"
             :key="account.name"
-            class="app-surface-subtle p-4"
+            class="rounded-md border bg-muted/30 p-4"
           >
             <div class="space-y-2">
               <div class="flex items-center justify-between gap-3">
-                <h3 class="truncate text-base font-semibold text-slate-900">{{ account.name }}</h3>
+                <h3 class="truncate text-sm font-semibold">{{ account.name }}</h3>
                 <Button size="sm" variant="outline" @click="goCreateTask(account.name)">{{ t('accounts.list.createTask') }}</Button>
               </div>
-              <p class="break-all text-sm text-slate-500">{{ account.path }}</p>
+              <p class="break-all text-xs text-muted-foreground">{{ account.path }}</p>
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
               <Button size="sm" variant="outline" class="flex-1 min-w-[120px]" @click="openEditDialog(account.name)">{{ t('accounts.list.update') }}</Button>
@@ -209,7 +209,7 @@ onMounted(fetchAccounts)
               </TableRow>
               <TableRow v-else v-for="account in accounts" :key="account.name">
                 <TableCell class="font-medium">{{ account.name }}</TableCell>
-                <TableCell class="text-sm text-gray-500">{{ account.path }}</TableCell>
+                <TableCell class="text-sm text-muted-foreground">{{ account.path }}</TableCell>
                 <TableCell class="text-right">
                   <div class="flex justify-end gap-2">
                     <Button size="sm" variant="outline" @click="goCreateTask(account.name)">{{ t('accounts.list.createTask') }}</Button>

@@ -48,28 +48,27 @@ const latestSnapshotText = computed(() => {
 </script>
 
 <template>
-  <section class="app-surface mb-6 overflow-hidden border-none">
-    <div class="grid gap-8 px-6 py-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8">
+  <section class="overflow-hidden rounded-lg border bg-card">
+    <div class="grid gap-6 p-6 lg:grid-cols-[1.15fr_0.85fr]">
       <div class="space-y-5">
-        <div class="space-y-2">
-          <p class="text-xs uppercase tracking-[0.28em] text-primary/70">Market Intelligence</p>
-          <h2 class="text-3xl font-semibold text-slate-900">
+        <div class="space-y-1.5">
+          <h2 class="text-lg font-semibold tracking-tight">
             {{ selectedTaskLabel || t('results.insights.defaultTitle') }}
           </h2>
-          <p class="max-w-2xl text-sm leading-6 text-slate-500">
+          <p class="max-w-2xl text-sm leading-6 text-muted-foreground">
             {{ t('results.insights.subtitle') }}
           </p>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-3">
+        <div class="grid gap-3 md:grid-cols-3">
           <article
             v-for="card in summaryCards"
             :key="card.label"
-            class="app-surface-subtle p-4"
+            class="rounded-md border bg-muted/40 p-4"
           >
-            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ card.label }}</p>
-            <p class="mt-3 text-2xl font-semibold text-slate-900">{{ card.value }}</p>
-            <p class="mt-2 text-xs text-slate-500">{{ card.hint }}</p>
+            <p class="text-xs text-muted-foreground">{{ card.label }}</p>
+            <p class="mt-2 text-xl font-semibold tabular-nums tracking-tight">{{ card.value }}</p>
+            <p class="mt-1.5 text-xs text-muted-foreground">{{ card.hint }}</p>
           </article>
         </div>
 
@@ -77,37 +76,37 @@ const latestSnapshotText = computed(() => {
       </div>
 
       <div class="space-y-4">
-        <div class="rounded-[28px] border border-primary/10 bg-gradient-to-br from-primary to-sky-700 p-6 text-primary-foreground shadow-[0_16px_40px_rgba(37,99,235,0.22)]">
-          <p class="text-xs uppercase tracking-[0.24em] text-primary-foreground/70">Trend Reading</p>
-          <p class="mt-4 text-3xl font-semibold">
+        <div class="rounded-lg border p-5">
+          <p class="text-xs font-medium text-muted-foreground">Trend Reading</p>
+          <p class="mt-3 text-2xl font-semibold tabular-nums tracking-tight">
             {{ t('results.insights.snapshotCount', { count: insights?.market_summary.sample_count || 0 }) }}
           </p>
-          <p class="mt-2 text-sm leading-6 text-primary-foreground/80">
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">
             {{ t('results.insights.trendReading') }}
           </p>
         </div>
 
-        <div class="app-surface-subtle p-5">
-          <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Snapshot Note</p>
-          <p class="mt-4 text-sm leading-6 text-slate-600">
+        <div class="rounded-lg border p-5">
+          <p class="text-xs font-medium text-muted-foreground">Snapshot</p>
+          <p class="mt-3 text-sm leading-6 text-muted-foreground">
             {{ latestSnapshotText }}
           </p>
-          <div class="mt-4 grid gap-3 text-sm text-slate-600">
-            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+          <div class="mt-4 grid gap-2 text-sm text-muted-foreground">
+            <div class="rounded-md bg-muted/50 px-3 py-2.5">
               {{ t('results.insights.currentMedian') }}
-              <span class="font-semibold text-slate-900">
+              <span class="font-medium text-foreground">
                 {{ insights?.market_summary.median_price ? `¥${insights.market_summary.median_price}` : '—' }}
               </span>
             </div>
-            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+            <div class="rounded-md bg-muted/50 px-3 py-2.5">
               {{ t('results.insights.historyMin') }}
-              <span class="font-semibold text-slate-900">
+              <span class="font-medium text-foreground">
                 {{ insights?.history_summary.min_price ? `¥${insights.history_summary.min_price}` : '—' }}
               </span>
             </div>
-            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+            <div class="rounded-md bg-muted/50 px-3 py-2.5">
               {{ t('results.insights.historyMax') }}
-              <span class="font-semibold text-slate-900">
+              <span class="font-medium text-foreground">
                 {{ insights?.history_summary.max_price ? `¥${insights.history_summary.max_price}` : '—' }}
               </span>
             </div>

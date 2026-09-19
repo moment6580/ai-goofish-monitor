@@ -103,13 +103,13 @@ async function handleClearLogs() {
 </script>
 
 <template>
-  <div class="flex h-[calc(100vh-100px)] flex-col gap-4">
-    <div class="app-surface p-4">
+  <div class="flex h-[calc(100vh-120px)] flex-col gap-4">
+    <div class="rounded-lg border bg-card p-4">
       <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center">
-        <h1 class="text-2xl font-bold text-gray-800">{{ t('logs.title') }}</h1>
+        <h1 class="text-2xl font-semibold tracking-tight">{{ t('logs.title') }}</h1>
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Label class="text-sm text-gray-600">{{ t('logs.task') }}</Label>
+          <Label class="text-sm text-muted-foreground">{{ t('logs.task') }}</Label>
           <Select v-model="selectedTaskId">
             <SelectTrigger class="w-full sm:w-[260px]">
               <SelectValue :placeholder="t('logs.selectTask')" />
@@ -145,12 +145,12 @@ async function handleClearLogs() {
     </div>
     </div>
 
-    <Card class="app-surface flex flex-1 flex-col overflow-hidden border-none">
-      <CardContent class="flex-1 p-0 relative">
+    <Card class="flex flex-1 flex-col overflow-hidden">
+      <CardContent class="relative flex-1 p-0">
         <pre
           ref="logContainer"
           @scroll="handleScroll"
-          class="absolute inset-0 p-4 bg-gray-950 text-gray-100 font-mono text-sm overflow-auto whitespace-pre-wrap break-all"
+          class="absolute inset-0 overflow-auto whitespace-pre-wrap break-all rounded-b-lg bg-zinc-950 p-4 font-mono text-sm text-zinc-100"
         >{{ logs }}</pre>
       </CardContent>
     </Card>

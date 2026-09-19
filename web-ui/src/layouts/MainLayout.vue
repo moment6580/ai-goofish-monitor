@@ -17,39 +17,32 @@ const { t } = useI18n()
       {{ t('common.skipToContent') }}
     </a>
 
-    <!-- 背景装饰渐变 -->
-    <div aria-hidden="true" class="fixed inset-0 pointer-events-none overflow-hidden">
-      <div class="absolute -top-[10%] -left-[10%] h-[40%] w-[40%] rounded-full bg-primary/5 blur-[120px] animate-pulse motion-reduce:animate-none"></div>
-      <div class="absolute top-[20%] -right-[5%] w-[30%] h-[35%] rounded-full bg-blue-400/5 blur-[100px]"></div>
-      <div class="absolute -bottom-[10%] left-[20%] w-[35%] h-[35%] rounded-full bg-emerald-400/5 blur-[100px]"></div>
-    </div>
-
     <!-- Header -->
-    <TheHeader class="sticky top-0 z-50 glass" />
+    <TheHeader class="sticky top-0 z-50 w-full border-b bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur" />
 
     <transition name="mobile-nav">
       <div v-if="isMobileNavOpen" class="fixed inset-0 z-[90] md:hidden">
         <button
           type="button"
-          class="absolute inset-0 bg-slate-950/25 backdrop-blur-[2px]"
+          class="absolute inset-0 bg-black/40"
           :aria-label="t('common.close')"
           @click="closeMobileNav"
         />
-        <aside class="relative h-full w-72 border-r border-slate-200/60 bg-white/90 p-4 shadow-2xl backdrop-blur-xl">
+        <aside class="relative h-full w-72 border-r bg-background p-4 shadow-lg">
           <TheSidebar class="pt-16" @navigate="closeMobileNav" />
         </aside>
       </div>
     </transition>
 
-    <div class="flex flex-grow relative z-10">
+    <div class="flex flex-grow">
       <!-- Sidebar -->
-      <aside class="hidden md:block w-64 flex-shrink-0 border-r border-slate-200/60 bg-white/40 backdrop-blur-sm">
-        <TheSidebar class="sticky top-16 h-[calc(100vh-4rem)] p-4" />
+      <aside class="hidden md:block w-60 flex-shrink-0 border-r bg-background">
+        <TheSidebar class="sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto p-3" />
       </aside>
 
       <!-- Main Content Area -->
       <main id="main-content" tabindex="-1" class="flex-grow overflow-x-hidden p-4 focus:outline-none md:p-8">
-        <div class="max-w-7xl mx-auto animate-fade-in">
+        <div class="mx-auto max-w-6xl">
           <RouterView v-slot="{ Component }">
             <transition name="page" mode="out-in">
               <component :is="Component" />
@@ -64,17 +57,17 @@ const { t } = useI18n()
 <style scoped>
 .page-enter-active,
 .page-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .page-enter-from {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(6px);
 }
 
 .page-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-6px);
 }
 
 .mobile-nav-enter-active,

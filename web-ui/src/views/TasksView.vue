@@ -203,9 +203,9 @@ onMounted(fetchAccountOptions)
 </script>
 
 <template>
-  <div>
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">
+  <div class="space-y-6">
+    <div class="flex justify-between items-center">
+      <h1 class="text-2xl font-semibold tracking-tight">
         {{ t('tasks.title') }}
       </h1>
       <TaskCreateDialog :account-options="accountOptions" @created="fetchTasks" />
@@ -243,7 +243,7 @@ onMounted(fetchAccountOptions)
           </DialogDescription>
         </DialogHeader>
         <div class="grid gap-3">
-          <label class="text-sm font-medium text-gray-700">{{ t('tasks.form.description') }}</label>
+          <label class="text-sm font-medium">{{ t('tasks.form.description') }}</label>
           <Textarea
             v-model="criteriaDescription"
             class="min-h-[140px]"

@@ -156,7 +156,7 @@ watch(() => props.modelValue, syncFromModel, { immediate: true })
       </Select>
     </div>
 
-    <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+    <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <span>{{ t('tasks.region.helper') }}</span>
     </div>
 
@@ -164,7 +164,7 @@ watch(() => props.modelValue, syncFromModel, { immediate: true })
       <Button type="button" variant="ghost" size="sm" @click="clearSelection">
         {{ t('tasks.region.clear') }}
       </Button>
-      <span v-if="currentPath" class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+      <span v-if="currentPath" class="rounded-md bg-muted px-3 py-1 text-xs text-muted-foreground">
         {{ t('tasks.region.current', { path: currentPath }) }}
       </span>
     </div>

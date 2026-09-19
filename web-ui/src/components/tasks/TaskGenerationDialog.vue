@@ -48,7 +48,7 @@ const helperText = computed(() => {
       </DialogHeader>
 
       <TaskGenerationProgress v-if="job" :job="job" />
-      <p v-if="job" class="text-xs text-slate-500">
+      <p v-if="job" class="text-xs text-muted-foreground">
         {{ helperText }}
       </p>
 

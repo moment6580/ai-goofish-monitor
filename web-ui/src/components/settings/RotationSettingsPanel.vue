@@ -22,17 +22,17 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Card class="app-surface overflow-hidden border-none">
+  <Card class="shadow-card">
     <CardHeader>
       <CardTitle>{{ t('rotation.title') }}</CardTitle>
       <CardDescription>{{ t('rotation.description') }}</CardDescription>
     </CardHeader>
     <CardContent v-if="isReady" class="grid gap-6 lg:grid-cols-2">
-      <section class="app-surface-subtle p-5">
+      <section class="rounded-md border bg-muted/30 p-5">
         <div class="mb-5 flex items-center justify-between">
           <div>
-            <h3 class="font-semibold text-slate-900">{{ t('rotation.account.title') }}</h3>
-            <p class="text-sm text-slate-500">{{ t('rotation.account.description') }}</p>
+            <h3 class="font-medium">{{ t('rotation.account.title') }}</h3>
+            <p class="text-sm text-muted-foreground">{{ t('rotation.account.description') }}</p>
           </div>
           <Switch v-model:checked="settings.ACCOUNT_ROTATION_ENABLED" />
         </div>
@@ -67,11 +67,11 @@ const emit = defineEmits<{
         </div>
       </section>
 
-      <section class="app-surface-subtle p-5">
+      <section class="rounded-md border bg-muted/30 p-5">
         <div class="mb-5 flex items-center justify-between">
           <div>
-            <h3 class="font-semibold text-slate-900">{{ t('rotation.proxy.title') }}</h3>
-            <p class="text-sm text-slate-500">{{ t('rotation.proxy.description') }}</p>
+            <h3 class="font-medium">{{ t('rotation.proxy.title') }}</h3>
+            <p class="text-sm text-muted-foreground">{{ t('rotation.proxy.description') }}</p>
           </div>
           <Switch v-model:checked="settings.PROXY_ROTATION_ENABLED" />
         </div>
@@ -110,7 +110,7 @@ const emit = defineEmits<{
         </div>
       </section>
     </CardContent>
-    <CardContent v-else class="py-8 text-sm text-gray-500">
+    <CardContent v-else class="py-8 text-sm text-muted-foreground">
       {{ t('rotation.loading') }}
     </CardContent>
     <CardFooter v-if="isReady" class="flex justify-end gap-2">
