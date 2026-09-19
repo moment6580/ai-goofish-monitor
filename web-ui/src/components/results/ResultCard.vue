@@ -157,7 +157,7 @@ const expanded = ref(false)
           class="bg-emerald-600/90 dark:bg-emerald-500/90 text-white border-none px-1.5 py-0.5 text-[10px] font-medium shadow-sm backdrop-blur-sm"
         >
           <TrendingDown class="mr-0.5 h-3 w-3 inline" />
-          低均价 ¥{{ dealDiff }}
+          {{ t('results.card.belowMarketAvg', { amount: dealDiff }) }}
         </Badge>
 
         <Badge
@@ -205,7 +205,7 @@ const expanded = ref(false)
 
         <span v-if="wantCount" class="flex items-center gap-0.5 font-medium drop-shadow-sm text-amber-300">
           <Flame class="h-3 w-3 fill-amber-300" />
-          {{ wantCount }}人想要
+          {{ t('results.card.wantCount', { count: wantCount }) }}
         </span>
       </div>
     </div>
@@ -237,9 +237,9 @@ const expanded = ref(false)
         <span
           v-if="priceInsight?.market_avg_price"
           class="text-[11px] text-muted-foreground/80 tabular-nums"
-          :title="`市场均价 ¥${priceInsight.market_avg_price}`"
+          :title="t('results.card.marketAvg', { price: priceInsight.market_avg_price })"
         >
-          均价 ¥{{ priceInsight.market_avg_price }}
+          {{ t('results.card.marketAvgShort', { price: priceInsight.market_avg_price }) }}
         </span>
       </div>
     </CardHeader>
@@ -255,7 +255,7 @@ const expanded = ref(false)
           </div>
 
           <div class="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <span>匹配度</span>
+            <span>{{ t('results.card.matchScore') }}</span>
             <span class="font-bold tabular-nums" :class="recommendationStatus.text">{{ matchScore }}%</span>
           </div>
         </div>

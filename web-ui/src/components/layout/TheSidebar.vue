@@ -46,7 +46,7 @@ const connectionLabel = computed(() => (
       <!-- 分组 1: 核心监控与捡漏 -->
       <div class="space-y-1">
         <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-          监控与发现
+          {{ t('sidebar.groupMonitoring') }}
         </p>
 
         <RouterLink
@@ -76,7 +76,7 @@ const connectionLabel = computed(() => (
       <!-- 分组 2: 账号与管理 -->
       <div class="space-y-1 pt-1">
         <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-          控制与配置
+          {{ t('sidebar.groupControl') }}
         </p>
 
         <RouterLink
@@ -108,7 +108,7 @@ const connectionLabel = computed(() => (
     <div class="pt-4 px-1">
       <div class="rounded-lg border border-border/80 bg-muted/30 p-2.5 space-y-1.5">
         <div class="flex items-center justify-between">
-          <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">实时引擎</span>
+          <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{{ t('sidebar.liveEngine') }}</span>
           <span
             class="inline-flex items-center gap-1 text-[10px] font-medium"
             :class="isConnected ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'"
@@ -129,7 +129,7 @@ const connectionLabel = computed(() => (
 
         <div class="flex items-center justify-between text-[11px] text-muted-foreground/80 pt-0.5">
           <span class="font-medium text-foreground">
-            闲鱼捡漏监控
+            {{ t('sidebar.engineTitle') }}
           </span>
           <span class="font-mono text-[10px]">v2.1</span>
         </div>

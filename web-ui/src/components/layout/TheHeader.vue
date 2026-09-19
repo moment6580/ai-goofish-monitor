@@ -73,7 +73,7 @@ function goPrompts() {
             :class="isConnected ? 'bg-emerald-500' : 'bg-amber-500'"
           />
         </span>
-        <span>{{ isConnected ? '实时就绪' : '连接中' }}</span>
+        <span>{{ isConnected ? t('sidebar.backendConnected') : t('sidebar.backendConnecting') }}</span>
       </div>
     </div>
 

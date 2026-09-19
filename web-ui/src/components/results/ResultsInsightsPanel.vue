@@ -70,7 +70,7 @@ const latestSnapshotText = computed(() => {
               {{ selectedTaskLabel || t('results.insights.defaultTitle') }}
             </h2>
             <Badge variant="outline" class="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground">
-              行情分析
+              {{ t('results.insights.panelBadge') }}
             </Badge>
           </div>
         </div>
@@ -81,7 +81,7 @@ const latestSnapshotText = computed(() => {
           v-if="insights?.market_summary.sample_count"
           class="hidden sm:inline-flex text-xs text-muted-foreground"
         >
-          样本总量 {{ insights.market_summary.sample_count }} 件
+          {{ t('results.insights.sampleTotal', { count: insights.market_summary.sample_count }) }}
         </span>
 
         <Button
@@ -90,7 +90,7 @@ const latestSnapshotText = computed(() => {
           class="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
           @click="isCollapsed = !isCollapsed"
         >
-          <span class="text-xs">{{ isCollapsed ? '展开行情' : '收起行情' }}</span>
+          <span class="text-xs">{{ isCollapsed ? t('results.insights.expandPanel') : t('results.insights.collapsePanel') }}</span>
           <component :is="isCollapsed ? ChevronDown : ChevronUp" class="ml-1 h-3.5 w-3.5" />
         </Button>
       </div>
@@ -121,7 +121,7 @@ const latestSnapshotText = computed(() => {
           <div class="flex items-center justify-between text-xs text-muted-foreground">
             <span class="flex items-center gap-1 font-medium text-foreground">
               <Sparkles class="h-3.5 w-3.5 text-primary" />
-              市场走势速读
+              {{ t('results.insights.trendDigestTitle') }}
             </span>
             <span class="tabular-nums font-semibold text-primary">
               {{ t('results.insights.snapshotCount', { count: insights?.market_summary.sample_count || 0 }) }}
@@ -135,7 +135,7 @@ const latestSnapshotText = computed(() => {
 
         <div class="rounded-lg border border-border/70 bg-card p-4 space-y-2.5">
           <div class="flex items-center justify-between text-xs text-muted-foreground">
-            <span class="font-medium text-foreground">价格统计区间</span>
+            <span class="font-medium text-foreground">{{ t('results.insights.priceRangeTitle') }}</span>
             <span class="text-[11px] truncate max-w-[160px]">{{ latestSnapshotText }}</span>
           </div>
 

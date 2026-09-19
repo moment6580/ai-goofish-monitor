@@ -242,7 +242,7 @@ async function handleClearLogs() {
           ref="logContainer"
           @scroll="handleScroll"
           class="absolute inset-0 overflow-auto whitespace-pre-wrap break-all p-4 font-mono text-xs leading-relaxed text-zinc-200 selection:bg-zinc-800 selection:text-white"
-        >{{ logs || 'Waiting for spider output...' }}</pre>
+        >{{ logs || t('logs.waitingOutput') }}</pre>
 
         <!-- 自动滚动恢复提示悬浮按钮 -->
         <button
@@ -252,7 +252,7 @@ async function handleClearLogs() {
           class="absolute bottom-3 right-4 flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900/90 px-2.5 py-1 text-[11px] text-zinc-300 shadow-md backdrop-blur-sm transition-all hover:bg-zinc-800"
         >
           <ArrowDown class="h-3 w-3 animate-bounce" />
-          滚动至最新
+          {{ t('logs.scrollToLatest') }}
         </button>
       </CardContent>
     </Card>
