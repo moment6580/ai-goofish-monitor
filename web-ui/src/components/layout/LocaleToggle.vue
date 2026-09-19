@@ -21,7 +21,7 @@ const localeOptions = [
       v-for="option in localeOptions"
       :key="option.value"
       type="button"
-      class="rounded-[calc(var(--radius)-2px)] px-2 py-1 text-xs font-medium transition-colors"
+      class="flex min-h-8 min-w-9 items-center justify-center rounded-[calc(var(--radius)-2px)] px-2 py-1 text-xs font-medium transition-colors"
       :class="locale === option.value
         ? 'bg-background text-foreground shadow-sm'
         : 'text-muted-foreground hover:text-foreground'"
