@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import DashboardTaskSearch from '@/components/layout/DashboardTaskSearch.vue'
 import LocaleToggle from '@/components/layout/LocaleToggle.vue'
 import Badge from '@/components/ui/badge/Badge.vue'
+import BrandLogo from '@/components/common/BrandLogo.vue'
 import {
-  Zap,
   Bell,
   Search,
   UserCircle,
@@ -49,12 +49,10 @@ function goPrompts() {
     <div class="flex items-center gap-3">
       <RouterLink
         to="/dashboard"
-        class="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        class="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         :aria-label="t('header.goHome')"
       >
-        <div class="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-xs">
-          <Zap class="h-4 w-4 fill-current" />
-        </div>
+        <BrandLogo size="sm" animate />
         <div class="hidden sm:flex items-center gap-1.5">
           <h1 class="text-sm font-semibold tracking-tight">
             AI Xianyu Hunter

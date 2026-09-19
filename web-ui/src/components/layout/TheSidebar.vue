@@ -8,8 +8,8 @@ import {
   Layers,
   Terminal,
   Settings2,
-  Zap,
 } from 'lucide-vue-next'
+import BrandLogo from '@/components/common/BrandLogo.vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useI18n } from 'vue-i18n'
 
@@ -129,8 +129,8 @@ const connectionLabel = computed(() => (
         </div>
 
         <div class="flex items-center justify-between text-[11px] text-muted-foreground/80 pt-0.5">
-          <span class="flex items-center gap-1">
-            <Zap class="h-3 w-3 text-primary" />
+          <span class="flex items-center gap-1.5 font-medium text-foreground">
+            <BrandLogo size="xs" />
             AI 捡漏监控
           </span>
           <span class="font-mono text-[10px]">v2.1</span>
