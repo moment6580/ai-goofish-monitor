@@ -126,49 +126,6 @@ def _resolve_task(
     )
 
 
-def _collect_record_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
-    latest_crawl_time: datetime | None = None
-    latest_record: dict[str, Any] | None = None
-    latest_recommendation: dict[str, Any] | None = None
-    recommended_items = 0
-    ai_recommended_items = 0
-    keyword_recommended_items = 0
-
-    for record in records:
-        crawl_time = parse_timestamp(record.get("爬取时间"))
-        if crawl_time and (latest_crawl_time is None or crawl_time > latest_crawl_time):
-            latest_crawl_time = crawl_time
-            latest_record = record
-
-        analysis = record.get("ai_analysis", {}) or {}
-        if analysis.get("is_recommended") is not True:
-            continue
-
-        recommended_items += 1
-        source = analysis.get("analysis_source")
-        if source == "ai":
-            ai_recommended_items += 1
-        elif source == "keyword":
-            keyword_recommended_items += 1
-
-        recommendation_time = parse_timestamp(
-            latest_recommendation.get("爬取时间") if latest_recommendation else None
-        )
-        if latest_recommendation is None or (crawl_time and recommendation_time and crawl_time > recommendation_time):
-            latest_recommendation = record
-        elif latest_recommendation is None and crawl_time:
-            latest_recommendation = record
-
-    return {
-        "latest_crawl_time": latest_crawl_time,
-        "latest_record": latest_record,
-        "latest_recommendation": latest_recommendation,
-        "recommended_items": recommended_items,
-        "ai_recommended_items": ai_recommended_items,
-        "keyword_recommended_items": keyword_recommended_items,
-    }
-
-
 def _build_recommendation_activity(
     *,
     filename: str,

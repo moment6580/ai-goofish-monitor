@@ -3,6 +3,7 @@ SQLite 连接与 schema 初始化。
 """
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from contextlib import contextmanager
@@ -143,6 +144,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     for statement in SCHEMA_STATEMENTS:
         conn.execute(statement)
     _migrate_result_items_status(conn)
+    _migrate_result_items_rule_hidden(conn)
     conn.commit()
 
 
@@ -165,6 +167,67 @@ def _migrate_result_items_status(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_results_filename_status_crawl"
         " ON result_items(result_filename, status, crawl_time DESC)"
     )
+
+
+def _migrate_result_items_rule_hidden(conn: sqlite3.Connection) -> None:
+    """为 result_items 表添加 rule_hidden 列（黑名单命中标记，仅执行一次）。
+
+    该列将"是否被黑名单规则隐藏"从每次查询时的 Python 正则匹配，
+    下推为 SQL 可过滤/可计数的普通列，分页与统计才能走索引。
+    黑名单规则变更时由 result_storage_service 重算。
+    """
+    row = conn.execute(
+        "SELECT value FROM app_metadata WHERE key = 'migration:result_items_rule_hidden'"
+    ).fetchone()
+    if row is not None:
+        return
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(result_items)").fetchall()]
+    if "rule_hidden" not in cols:
+        conn.execute(
+            "ALTER TABLE result_items ADD COLUMN rule_hidden INTEGER NOT NULL DEFAULT 0"
+        )
+    conn.execute(
+        "INSERT OR REPLACE INTO app_metadata(key, value) VALUES ('migration:result_items_rule_hidden', 'done')"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_results_filename_visible"
+        " ON result_items(result_filename, status, rule_hidden, crawl_time DESC)"
+    )
+    _recompute_rule_hidden_after_migration(conn)
+
+
+def _recompute_rule_hidden_after_migration(conn: sqlite3.Connection) -> None:
+    """迁移后为已配置黑名单规则的文件重算 rule_hidden（一次性）。"""
+    try:
+        from src.services.result_blacklist_service import match_blacklist_keywords
+    except Exception:
+        return
+
+    rule_rows = conn.execute(
+        "SELECT result_filename, blacklist_keywords_json FROM result_blacklist_rules"
+    ).fetchall()
+    for rule_row in rule_rows:
+        filename = str(rule_row["result_filename"])
+        try:
+            keywords = json.loads(rule_row["blacklist_keywords_json"] or "[]")
+        except (json.JSONDecodeError, TypeError):
+            keywords = []
+        if not keywords:
+            continue
+        item_rows = conn.execute(
+            "SELECT id, raw_json FROM result_items WHERE result_filename = ?",
+            (filename,),
+        ).fetchall()
+        updates = []
+        for item_row in item_rows:
+            try:
+                record = json.loads(item_row["raw_json"])
+            except (json.JSONDecodeError, TypeError):
+                continue
+            hidden = 1 if match_blacklist_keywords(record, keywords) else 0
+            updates.append((hidden, item_row["id"]))
+        if updates:
+            conn.executemany("UPDATE result_items SET rule_hidden = ? WHERE id = ?", updates)
 
 
 @contextmanager
