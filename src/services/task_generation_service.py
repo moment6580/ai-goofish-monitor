@@ -19,6 +19,9 @@ DEFAULT_GENERATION_STEPS: tuple[tuple[str, str], ...] = (
     ("task", "创建任务记录"),
 )
 
+# 保留的已完成作业上限（防止长跑服务内存无限增长）
+MAX_RETAINED_JOBS = 100
+
 
 class TaskGenerationService:
     """管理 AI 任务生成的后台作业状态"""
@@ -28,6 +31,23 @@ class TaskGenerationService:
         self._jobs: Dict[str, TaskGenerationJob] = {}
         self._lock = threading.Lock()
         self._workers: set[threading.Thread] = set()
+
+    def _prune_jobs_locked(self) -> None:
+        """清理已结束的历史作业，仅保留最近 MAX_RETAINED_JOBS 个。
+
+        调用方需持有 self._lock。运行中的作业始终保留。
+        """
+        if len(self._jobs) <= MAX_RETAINED_JOBS:
+            return
+        finished = [
+            job_id
+            for job_id, job in self._jobs.items()
+            if job.status in ("completed", "failed")
+        ]
+        # dict 保序（插入顺序），保留最新的若干个
+        overflow = len(self._jobs) - MAX_RETAINED_JOBS
+        for job_id in finished[:overflow]:
+            self._jobs.pop(job_id, None)
 
     async def create_job(self, task_name: str) -> TaskGenerationJob:
         job = TaskGenerationJob(
@@ -40,6 +60,7 @@ class TaskGenerationService:
         )
         with self._lock:
             self._jobs[job.job_id] = job
+            self._prune_jobs_locked()
             return deepcopy(job)
 
     async def get_job(self, job_id: str) -> Optional[TaskGenerationJob]:

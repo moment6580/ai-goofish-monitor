@@ -10,14 +10,19 @@ from enum import Enum
 from pydantic import BaseModel
 from urllib.parse import quote
 
-from src.services.price_history_service import build_price_history_insights
+from src.services.price_history_service import (
+    build_price_history_insights,
+    delete_price_snapshots,
+)
 from src.services.result_export_service import build_results_csv
 from src.services.result_file_service import (
     enrich_records_with_price_insight,
     enrich_records_with_price_insight_async,
     validate_result_filename,
 )
+from src.infrastructure.persistence.storage_names import normalize_keyword_from_filename
 from src.services.result_storage_service import (
+    any_result_file_uses_keyword,
     build_result_ndjson,
     delete_result_file_records,
     list_result_filenames,
@@ -71,7 +76,7 @@ async def download_result_file(filename: str):
 
 @router.delete("/files/{filename:path}")
 async def delete_result_file(filename: str):
-    """删除指定的结果文件"""
+    """删除指定的结果文件（同时清理该关键词已无结果文件的价格快照）"""
     if ".." in filename or filename.startswith("/"):
         raise HTTPException(status_code=400, detail="非法的文件路径")
     if not filename.endswith(".jsonl"):
@@ -79,6 +84,17 @@ async def delete_result_file(filename: str):
     deleted_rows = await delete_result_file_records(filename)
     if deleted_rows <= 0:
         raise HTTPException(status_code=404, detail="文件不存在")
+
+    # 结果文件名与关键词一一对应，删除后该关键词的行情快照即为孤儿数据。
+    # 仅当没有其他结果文件复用同关键词时清理（与删除任务的逻辑保持一致）。
+    try:
+        keyword = normalize_keyword_from_filename(filename)
+        still_in_use = await any_result_file_uses_keyword(keyword, exclude_filename=filename)
+        if not still_in_use:
+            await asyncio.to_thread(delete_price_snapshots, keyword)
+    except Exception as exc:
+        print(f"删除结果文件时清理价格快照失败: {exc}")
+
     return {"message": f"文件 {filename} 已成功删除"}
 
 

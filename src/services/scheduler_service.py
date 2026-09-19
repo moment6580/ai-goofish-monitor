@@ -67,7 +67,11 @@ class SchedulerService:
                         args=[task.id, task.task_name],
                         id=f"task_{task.id}",
                         name=f"Scheduled: {task.task_name}",
-                        replace_existing=True
+                        replace_existing=True,
+                        # 错过的触发合并为一次、同一任务不重叠执行、允许 60s 内补跑
+                        coalesce=True,
+                        max_instances=1,
+                        misfire_grace_time=60,
                     )
                     print(f"  -> 已为任务 '{task.task_name}' 添加定时规则: '{task.cron}'")
                 except ValueError as e:

@@ -8,6 +8,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../dist'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // 视图保持 eager 打包以保证切换零延迟；仅将体积大且极少变动的
+        // 第三方依赖拆分为独立 chunk，提升浏览器缓存命中率。
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router', 'vue-i18n'],
+          'vendor-ui': ['reka-ui', 'lucide-vue-next', 'class-variance-authority', 'clsx', 'tailwind-merge'],
+        },
+      },
+    },
   },
   resolve: {
     alias: {

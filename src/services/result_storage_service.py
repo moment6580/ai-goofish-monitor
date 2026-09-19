@@ -246,6 +246,27 @@ async def delete_result_file_records(filename: str) -> int:
     return await asyncio.to_thread(_delete_result_file_records_sync, filename)
 
 
+async def any_result_file_uses_keyword(keyword: str, *, exclude_filename: str) -> bool:
+    """是否存在其他结果文件使用同一关键词（用于判断能否清理行情快照）。"""
+    return await asyncio.to_thread(
+        _any_result_file_uses_keyword_sync, keyword, exclude_filename
+    )
+
+
+def _any_result_file_uses_keyword_sync(keyword: str, exclude_filename: str) -> bool:
+    bootstrap_sqlite_storage()
+    with sqlite_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT 1 FROM result_items
+            WHERE result_filename != ? AND result_filename != '' AND keyword = ?
+            LIMIT 1
+            """,
+            (exclude_filename, keyword),
+        ).fetchone()
+    return row is not None
+
+
 def _delete_result_file_records_sync(filename: str) -> int:
     bootstrap_sqlite_storage()
     with sqlite_connection() as conn:

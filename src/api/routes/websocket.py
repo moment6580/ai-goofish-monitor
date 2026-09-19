@@ -2,6 +2,8 @@
 WebSocket 路由
 提供实时通信功能
 """
+import asyncio
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Set
 
@@ -47,21 +49,22 @@ async def websocket_endpoint(
 
 
 async def broadcast_message(message_type: str, data: dict):
-    """向所有连接的客户端广播消息"""
+    """向所有连接的客户端并发广播消息"""
     message = {
         "type": message_type,
         "data": data
     }
 
-    # 移除已断开的连接
-    disconnected = set()
+    connections = list(active_connections)
+    if not connections:
+        return
 
-    for connection in active_connections:
-        try:
-            await connection.send_json(message)
-        except Exception:
-            disconnected.add(connection)
+    results = await asyncio.gather(
+        *(connection.send_json(message) for connection in connections),
+        return_exceptions=True,
+    )
 
-    # 清理断开的连接
-    for connection in disconnected:
-        active_connections.discard(connection)
+    # 清理发送失败的连接
+    for connection, result in zip(connections, results):
+        if isinstance(result, Exception):
+            active_connections.discard(connection)

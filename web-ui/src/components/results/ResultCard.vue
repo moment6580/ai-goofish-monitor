@@ -128,6 +128,8 @@ const expanded = ref(false)
         :alt="info.商品标题"
         class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         loading="lazy"
+        decoding="async"
+        referrerpolicy="no-referrer"
       />
 
       <!-- 渐变暗角浮层（提升文字可读性） -->
