@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import DashboardTaskSearch from '@/components/layout/DashboardTaskSearch.vue'
 import LocaleToggle from '@/components/layout/LocaleToggle.vue'
 import Badge from '@/components/ui/badge/Badge.vue'
-import BrandLogo from '@/components/common/BrandLogo.vue'
 import {
   Bell,
   Search,
@@ -45,22 +44,19 @@ function goPrompts() {
 
 <template>
   <header class="flex h-14 items-center justify-between gap-4 px-4 md:px-6">
-    <!-- Brand Logo -->
+    <!-- Brand Text -->
     <div class="flex items-center gap-3">
       <RouterLink
         to="/dashboard"
-        class="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        class="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         :aria-label="t('header.goHome')"
       >
-        <BrandLogo size="sm" animate />
-        <div class="hidden sm:flex items-center gap-1.5">
-          <h1 class="text-sm font-semibold tracking-tight">
-            AI Xianyu Hunter
-          </h1>
-          <Badge variant="outline" class="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground">
-            Monitor
-          </Badge>
-        </div>
+        <h1 class="text-sm font-semibold tracking-tight">
+          AI Xianyu Hunter
+        </h1>
+        <Badge variant="outline" class="hidden sm:inline-flex text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground">
+          Monitor
+        </Badge>
       </RouterLink>
 
       <!-- 实时连接状态小药丸 (Kokonut UI 风格) -->

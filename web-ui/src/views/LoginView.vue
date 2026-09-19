@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import BrandLogo from '@/components/common/BrandLogo.vue'
 import { useI18n } from 'vue-i18n'
 
 const username = ref('')
@@ -52,9 +51,6 @@ async function handleLogin() {
     </div>
     <Card class="relative z-10 w-full max-w-sm shadow-card">
       <CardHeader class="space-y-1">
-        <div class="mx-auto mb-2 flex justify-center">
-          <BrandLogo size="lg" animate />
-        </div>
         <CardTitle class="text-center text-xl font-semibold tracking-tight">{{ t('login.title') }}</CardTitle>
         <CardDescription class="text-center">
           {{ t('login.description') }}
