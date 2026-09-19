@@ -1,14 +1,22 @@
 import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
+import LoginView from '@/views/LoginView.vue'
+import DashboardView from '@/views/DashboardView.vue'
+import TasksView from '@/views/TasksView.vue'
+import AccountsView from '@/views/AccountsView.vue'
+import ResultsView from '@/views/ResultsView.vue'
+import LogsView from '@/views/LogsView.vue'
+import SettingsView from '@/views/SettingsView.vue'
 import { useAuth } from '@/composables/useAuth'
 import { i18n, t } from '@/i18n'
 
+// 视图直接打包进主包（体积小），换取点击导航零加载延迟
 const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/views/LoginView.vue'),
+    component: LoginView,
     meta: { titleKey: 'routes.login' },
   },
   {
@@ -19,37 +27,37 @@ const routes = [
       {
         path: 'dashboard',
         name: 'Dashboard',
-        component: () => import('@/views/DashboardView.vue'),
+        component: DashboardView,
         meta: { titleKey: 'routes.dashboard', requiresAuth: true },
       },
       {
         path: 'tasks',
         name: 'Tasks',
-        component: () => import('@/views/TasksView.vue'),
+        component: TasksView,
         meta: { titleKey: 'routes.tasks', requiresAuth: true },
       },
       {
         path: 'accounts',
         name: 'Accounts',
-        component: () => import('@/views/AccountsView.vue'),
+        component: AccountsView,
         meta: { titleKey: 'routes.accounts', requiresAuth: true },
       },
       {
         path: 'results',
         name: 'Results',
-        component: () => import('@/views/ResultsView.vue'),
+        component: ResultsView,
         meta: { titleKey: 'routes.results', requiresAuth: true },
       },
       {
         path: 'logs',
         name: 'Logs',
-        component: () => import('@/views/LogsView.vue'),
+        component: LogsView,
         meta: { titleKey: 'routes.logs', requiresAuth: true },
       },
       {
         path: 'settings',
         name: 'Settings',
-        component: () => import('@/views/SettingsView.vue'),
+        component: SettingsView,
         meta: { titleKey: 'routes.settings', requiresAuth: true },
       },
     ],
@@ -64,6 +72,16 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  // 路由切换立即回顶（覆盖 CSS 的 smooth 滚动，避免"缓动回顶"的卡顿感）
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return { ...savedPosition, behavior: 'instant' }
+    }
+    if (to.path !== from.path) {
+      return { top: 0, left: 0, behavior: 'instant' }
+    }
+    return false
+  },
 })
 
 function updateDocumentTitle() {

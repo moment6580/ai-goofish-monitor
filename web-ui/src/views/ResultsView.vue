@@ -128,7 +128,7 @@ async function handleSaveBlacklistRules() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-5">
     <h1 class="text-2xl font-semibold tracking-tight">
       {{ t('results.title') }}
     </h1>

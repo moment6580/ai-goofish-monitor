@@ -36,18 +36,14 @@ const { t } = useI18n()
 
     <div class="flex flex-grow">
       <!-- Sidebar -->
-      <aside class="hidden md:block w-60 flex-shrink-0 border-r bg-background">
+      <aside class="hidden md:block w-56 flex-shrink-0 border-r bg-background">
         <TheSidebar class="sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto p-3" />
       </aside>
 
       <!-- Main Content Area -->
-      <main id="main-content" tabindex="-1" class="flex-grow overflow-x-hidden p-4 focus:outline-none md:p-8">
+      <main id="main-content" tabindex="-1" class="flex-grow overflow-x-hidden p-4 focus:outline-none md:p-6">
         <div class="mx-auto max-w-6xl">
-          <RouterView v-slot="{ Component }">
-            <transition name="page" mode="out-in">
-              <component :is="Component" />
-            </transition>
-          </RouterView>
+          <RouterView />
         </div>
       </main>
     </div>
@@ -55,21 +51,6 @@ const { t } = useI18n()
 </template>
 
 <style scoped>
-.page-enter-active,
-.page-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.page-enter-from {
-  opacity: 0;
-  transform: translateY(6px);
-}
-
-.page-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-
 .mobile-nav-enter-active,
 .mobile-nav-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;

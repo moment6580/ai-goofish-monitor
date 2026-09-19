@@ -83,10 +83,6 @@
     @apply border-border;
   }
 
-  html {
-    scroll-behavior: smooth;
-  }
-
   body {
     @apply min-h-screen bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -116,10 +112,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
   *,
   *::before,
   *::after {

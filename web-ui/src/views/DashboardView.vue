@@ -132,7 +132,7 @@ function openActivity(activity: { filename: string | null; type: string }) {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-5">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">{{ t('dashboard.title') }}</h1>
@@ -149,9 +149,9 @@ function openActivity(activity: { filename: string | null; type: string }) {
     <div v-if="error" class="app-alert-error" role="alert">
       {{ error.message }}
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <Card v-for="stat in statCards" :key="stat.label" class="shadow-card">
-        <CardContent class="p-6">
+        <CardContent class="p-5">
           <div class="flex items-center justify-between">
             <div class="space-y-1.5">
               <p class="text-sm text-muted-foreground">{{ stat.label }}</p>
@@ -167,7 +167,7 @@ function openActivity(activity: { filename: string | null; type: string }) {
         </CardContent>
       </Card>
     </div>
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
       <Card class="lg:col-span-2">
         <CardHeader class="flex flex-col gap-2 border-b pb-4 md:flex-row md:items-start md:justify-between">
           <div class="space-y-1.5">
@@ -180,7 +180,7 @@ function openActivity(activity: { filename: string | null; type: string }) {
             {{ focusTask?.latest_crawl_time ? t('dashboard.focus.latestUpdate', { time: formatRelativeTimeFromNow(focusTask.latest_crawl_time) }) : t('dashboard.focus.waiting') }}
           </Badge>
         </CardHeader>
-        <CardContent class="space-y-6 p-6">
+        <CardContent class="space-y-5 p-5">
           <div v-if="isLoading" class="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
             {{ t('dashboard.focus.loading') }}
           </div>
@@ -223,7 +223,7 @@ function openActivity(activity: { filename: string | null; type: string }) {
           </template>
         </CardContent>
       </Card>
-      <div class="space-y-6">
+      <div class="space-y-5">
         <Card>
           <CardHeader class="pb-4">
             <CardTitle class="text-base font-semibold flex items-center gap-2">

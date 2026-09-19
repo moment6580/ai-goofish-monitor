@@ -92,7 +92,7 @@ function handleToggleKeywordRecommended(value: boolean) {
 </script>
 
 <template>
-  <div class="rounded-lg border bg-card p-4 sm:p-5">
+  <div class="rounded-lg border bg-card p-4">
     <div class="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
       <div class="space-y-2">
         <Label class="text-xs font-medium text-muted-foreground">{{ t('results.title') }}</Label>

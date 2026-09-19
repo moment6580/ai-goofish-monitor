@@ -179,7 +179,7 @@ watch(selectedPrompt, async (value) => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-5">
     <h1 class="text-2xl font-semibold tracking-tight">{{ t('settings.title') }}</h1>
 
     <div v-if="error" class="app-alert-error" role="alert">
@@ -187,7 +187,7 @@ watch(selectedPrompt, async (value) => {
     </div>
 
     <Tabs v-model="activeTab" class="w-full">
-      <TabsList class="mb-4 flex w-full flex-nowrap justify-start gap-1 overflow-x-auto">
+      <TabsList class="mb-3 flex w-full flex-nowrap justify-start gap-1 overflow-x-auto">
         <TabsTrigger class="shrink-0" value="ai">{{ t('settings.tabs.ai') }}</TabsTrigger>
         <TabsTrigger class="shrink-0" value="rotation">{{ t('settings.tabs.rotation') }}</TabsTrigger>
         <TabsTrigger class="shrink-0" value="notifications">{{ t('settings.tabs.notifications') }}</TabsTrigger>

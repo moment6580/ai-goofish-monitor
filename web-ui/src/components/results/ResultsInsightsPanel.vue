@@ -49,7 +49,7 @@ const latestSnapshotText = computed(() => {
 
 <template>
   <section class="overflow-hidden rounded-lg border bg-card">
-    <div class="grid gap-6 p-6 lg:grid-cols-[1.15fr_0.85fr]">
+    <div class="grid gap-5 p-5 lg:grid-cols-[1.15fr_0.85fr]">
       <div class="space-y-5">
         <div class="space-y-1.5">
           <h2 class="text-lg font-semibold tracking-tight">

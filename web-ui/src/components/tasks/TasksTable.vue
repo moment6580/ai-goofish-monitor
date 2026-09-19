@@ -496,9 +496,9 @@ const emit = defineEmits<{
 
 <style scoped>
 :deep(td) {
-  @apply py-3 px-4;
+  @apply py-2.5 px-4;
 }
 :deep(th) {
-  @apply h-10 px-4;
+  @apply h-9 px-4;
 }
 </style>
