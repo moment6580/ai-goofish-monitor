@@ -12,6 +12,15 @@ from src.infrastructure.persistence.sqlite_task_repository import SqliteTaskRepo
 from src.scraper import scrape_xianyu
 
 
+def _as_int_env(name: str, default: int) -> int:
+    raw = str(os.getenv(name, "")).strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
 async def main():
     parser = argparse.ArgumentParser(
         description="闲鱼商品监控脚本，支持多任务配置和实时AI分析。",
@@ -96,7 +105,7 @@ async def main():
             f"错误: 未找到登录状态文件。请在 state/ 中添加账号或配置 account_state_file。"
         )
 
-    # 读取所有prompt文件内容（关键词模式不需要加载prompt）
+    # 归一化关键词与决策模式（无 IO，开销可忽略）
     for task in tasks_config:
         decision_mode = str(task.get("decision_mode", "ai")).strip().lower()
         if decision_mode not in {"ai", "keyword"}:
@@ -107,46 +116,6 @@ async def main():
             task["keyword_rules"] = flatten_legacy_groups(task.get("keyword_rule_groups") or [])
         else:
             task["keyword_rules"] = normalize_keywords(keyword_rules)
-
-        if decision_mode == "keyword":
-            task["ai_prompt_text"] = ""
-            continue
-
-        if task.get("enabled", False) and task.get("ai_prompt_base_file") and task.get("ai_prompt_criteria_file"):
-            try:
-                with open(task["ai_prompt_base_file"], 'r', encoding='utf-8') as f_base:
-                    base_prompt = f_base.read()
-                with open(task["ai_prompt_criteria_file"], 'r', encoding='utf-8') as f_criteria:
-                    criteria_text = f_criteria.read()
-                
-                # 动态组合成最终的Prompt
-                task['ai_prompt_text'] = base_prompt.replace("{{CRITERIA_SECTION}}", criteria_text)
-                
-                # 验证生成的prompt是否有效
-                if len(task['ai_prompt_text']) < 100:
-                    print(f"警告: 任务 '{task['task_name']}' 生成的prompt过短 ({len(task['ai_prompt_text'])} 字符)，可能存在问题。")
-                elif "{{CRITERIA_SECTION}}" in task['ai_prompt_text']:
-                    print(f"警告: 任务 '{task['task_name']}' 的prompt中仍包含占位符，替换可能失败。")
-                else:
-                    print(f"✅ 任务 '{task['task_name']}' 的prompt生成成功，长度: {len(task['ai_prompt_text'])} 字符")
-
-            except FileNotFoundError as e:
-                print(f"警告: 任务 '{task['task_name']}' 的prompt文件缺失: {e}，该任务的AI分析将被跳过。")
-                task['ai_prompt_text'] = ""
-            except Exception as e:
-                print(f"错误: 任务 '{task['task_name']}' 处理prompt文件时发生异常: {e}，该任务的AI分析将被跳过。")
-                task['ai_prompt_text'] = ""
-        elif task.get("enabled", False) and task.get("ai_prompt_file"):
-            try:
-                with open(task["ai_prompt_file"], 'r', encoding='utf-8') as f:
-                    task['ai_prompt_text'] = f.read()
-                print(f"✅ 任务 '{task['task_name']}' 的prompt文件读取成功，长度: {len(task['ai_prompt_text'])} 字符")
-            except FileNotFoundError:
-                print(f"警告: 任务 '{task['task_name']}' 的prompt文件 '{task['ai_prompt_file']}' 未找到，该任务的AI分析将被跳过。")
-                task['ai_prompt_text'] = ""
-            except Exception as e:
-                print(f"错误: 任务 '{task['task_name']}' 读取prompt文件时发生异常: {e}，该任务的AI分析将被跳过。")
-                task['ai_prompt_text'] = ""
 
     print("\n--- 开始执行监控任务 ---")
     if args.debug_limit > 0:
@@ -177,6 +146,53 @@ async def main():
         print("没有需要执行的任务，程序退出。")
         return
 
+    # 仅为本轮真正要执行的任务加载 prompt 文件
+    def _load_prompt_for_task(task: dict) -> None:
+        if str(task.get("decision_mode", "ai")) == "keyword":
+            task["ai_prompt_text"] = ""
+            return
+
+        if task.get("ai_prompt_base_file") and task.get("ai_prompt_criteria_file"):
+            try:
+                with open(task["ai_prompt_base_file"], 'r', encoding='utf-8') as f_base:
+                    base_prompt = f_base.read()
+                with open(task["ai_prompt_criteria_file"], 'r', encoding='utf-8') as f_criteria:
+                    criteria_text = f_criteria.read()
+
+                # 动态组合成最终的Prompt
+                task['ai_prompt_text'] = base_prompt.replace("{{CRITERIA_SECTION}}", criteria_text)
+
+                # 验证生成的prompt是否有效
+                if len(task['ai_prompt_text']) < 100:
+                    print(f"警告: 任务 '{task['task_name']}' 生成的prompt过短 ({len(task['ai_prompt_text'])} 字符)，可能存在问题。")
+                elif "{{CRITERIA_SECTION}}" in task['ai_prompt_text']:
+                    print(f"警告: 任务 '{task['task_name']}' 的prompt中仍包含占位符，替换可能失败。")
+                else:
+                    print(f"✅ 任务 '{task['task_name']}' 的prompt生成成功，长度: {len(task['ai_prompt_text'])} 字符")
+
+            except FileNotFoundError as e:
+                print(f"警告: 任务 '{task['task_name']}' 的prompt文件缺失: {e}，该任务的AI分析将被跳过。")
+                task['ai_prompt_text'] = ""
+            except Exception as e:
+                print(f"错误: 任务 '{task['task_name']}' 处理prompt文件时发生异常: {e}，该任务的AI分析将被跳过。")
+                task['ai_prompt_text'] = ""
+        elif task.get("ai_prompt_file"):
+            try:
+                with open(task["ai_prompt_file"], 'r', encoding='utf-8') as f:
+                    task['ai_prompt_text'] = f.read()
+                print(f"✅ 任务 '{task['task_name']}' 的prompt文件读取成功，长度: {len(task['ai_prompt_text'])} 字符")
+            except FileNotFoundError:
+                print(f"警告: 任务 '{task['task_name']}' 的prompt文件 '{task['ai_prompt_file']}' 未找到，该任务的AI分析将被跳过。")
+                task['ai_prompt_text'] = ""
+            except Exception as e:
+                print(f"错误: 任务 '{task['task_name']}' 读取prompt文件时发生异常: {e}，该任务的AI分析将被跳过。")
+                task['ai_prompt_text'] = ""
+        else:
+            task['ai_prompt_text'] = ""
+
+    for task_conf in active_task_configs:
+        _load_prompt_for_task(task_conf)
+
     # 为每个启用的任务创建一个异步执行协程
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -186,15 +202,26 @@ async def main():
         except NotImplementedError:
             pass
 
-    tasks = []
+    # 全局并发上限：限制同时运行的爬虫（浏览器）数量，避免资源耗尽
+    max_concurrent = max(1, _as_int_env("SPIDER_MAX_CONCURRENT_TASKS", 2))
+    semaphore = asyncio.Semaphore(max_concurrent)
+    if max_concurrent < len(active_task_configs):
+        print(f"** 并发上限 {max_concurrent}，多任务将分批执行 **")
+
+    runners = []
+
+    async def _run_with_limit(task_conf: dict):
+        async with semaphore:
+            return await scrape_xianyu(task_config=task_conf, debug_limit=args.debug_limit)
+
     for task_conf in active_task_configs:
         print(f"-> 任务 '{task_conf['task_name']}' 已加入执行队列。")
-        tasks.append(asyncio.create_task(scrape_xianyu(task_config=task_conf, debug_limit=args.debug_limit)))
+        runners.append(asyncio.create_task(_run_with_limit(task_conf)))
 
     async def _shutdown_watcher():
         await stop_event.wait()
         print("\n收到终止信号，正在优雅退出，取消所有爬虫任务...")
-        for t in tasks:
+        for t in runners:
             if not t.done():
                 t.cancel()
 
@@ -202,7 +229,7 @@ async def main():
 
     try:
         # 并发执行所有任务
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(*runners, return_exceptions=True)
     finally:
         shutdown_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
