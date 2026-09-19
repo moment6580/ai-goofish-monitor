@@ -18,9 +18,22 @@ from src.infrastructure.persistence.sqlite_task_repository import find_task_by_n
 from src.services import spawn_registry
 from src.utils import build_task_log_path
 
+
 STOP_TIMEOUT_SECONDS = 20
 SPIDER_DEBUG_LIMIT_ENV = "SPIDER_DEBUG_LIMIT"
+MAX_CONCURRENT_PROCESSES_ENV = "MAX_CONCURRENT_SPIDER_PROCESSES"
+DEFAULT_MAX_CONCURRENT_PROCESSES = 3
 LifecycleHook = Callable[[int], Awaitable[None] | None]
+
+
+def _max_concurrent_processes() -> int:
+    """全局同时运行的爬虫进程数上限（防止 cron 齐发时 Chromium 耗尽内存）。"""
+    raw = str(os.getenv(MAX_CONCURRENT_PROCESSES_ENV, "")).strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_MAX_CONCURRENT_PROCESSES
+    return value if value > 0 else DEFAULT_MAX_CONCURRENT_PROCESSES
 
 
 class ProcessService:
@@ -145,6 +158,19 @@ class ProcessService:
         )
         if decision.skip:
             await self._notify_skip(task_name, decision)
+            return False
+
+        # 全局进程数上限：超出时跳过本轮（下个 cron 周期自然重试）
+        running = sum(
+            1 for p in self.processes.values() if p is not None and p.returncode is None
+        )
+        limit = _max_concurrent_processes()
+        if running >= limit:
+            print(
+                f"[ProcessCap] 跳过启动任务 '{task_name}'："
+                f"运行中的爬虫进程已达上限 ({running}/{limit})，"
+                f"可通过 MAX_CONCURRENT_SPIDER_PROCESSES 调整。"
+            )
             return False
 
         log_file_path = ""
