@@ -17,7 +17,6 @@ export function useResults() {
   const insights = ref<ResultInsights | null>(null)
   const totalItems = ref(0)
   const page = ref(1)
-  const limit = ref(100)
   const blacklistKeywords = ref<string[]>([])
   const taskNameByKeyword = ref<Record<string, string>>({})
   const isFileOptionsReady = ref(false)
@@ -48,8 +47,11 @@ export function useResults() {
   const filters = reactive<Required<Omit<GetResultContentParams, 'page' | 'limit'>>>(loadPersistedFilters())
 
   const isLoading = ref(false)
+  const isLoadingMore = ref(false)
   const error = ref<Error | null>(null)
   const { on } = useWebSocket()
+
+  const PAGE_SIZE = 100
 
   function normalizeKeyword(value: string) {
     return value.trim().toLowerCase().replace(/\s+/g, '_')
@@ -58,6 +60,8 @@ export function useResults() {
   function getKeywordFromFilename(filename: string) {
     return filename.replace(/_full_data\.jsonl$/i, '').toLowerCase()
   }
+
+  const hasMoreResults = computed(() => results.value.length < totalItems.value)
 
   // Methods
   async function fetchFiles() {
@@ -89,16 +93,18 @@ export function useResults() {
     if (!selectedFile.value) {
       results.value = []
       totalItems.value = 0
+      page.value = 1
       return
     }
 
     isLoading.value = true
     error.value = null
+    page.value = 1
     try {
       const data = await resultsApi.getResultContent(selectedFile.value, {
         ...filters,
-        page: page.value,
-        limit: limit.value,
+        page: 1,
+        limit: PAGE_SIZE,
       })
       results.value = data.items
       totalItems.value = data.total_items
@@ -108,6 +114,58 @@ export function useResults() {
       totalItems.value = 0
     } finally {
       isLoading.value = false
+    }
+  }
+
+  /** 追加加载下一页（真正的服务端分页，支持超过 100 条的结果集）。 */
+  async function loadMoreResults() {
+    if (!selectedFile.value || isLoading.value || isLoadingMore.value) return
+    if (!hasMoreResults.value) return
+
+    isLoadingMore.value = true
+    try {
+      const nextPage = page.value + 1
+      const data = await resultsApi.getResultContent(selectedFile.value, {
+        ...filters,
+        page: nextPage,
+        limit: PAGE_SIZE,
+      })
+      // 去重后追加，避免与已加载项重复
+      const existingIds = new Set(results.value.map((item) => item.商品信息?.商品ID))
+      const appended = data.items.filter((item) => !existingIds.has(item.商品信息?.商品ID))
+      results.value = [...results.value, ...appended]
+      totalItems.value = data.total_items
+      page.value = nextPage
+    } catch (e) {
+      if (e instanceof Error) error.value = e
+    } finally {
+      isLoadingMore.value = false
+    }
+  }
+
+  /** 重新拉取已加载的页（用于实时更新/黑名单变更后保持一致）。 */
+  async function refreshLoadedPages() {
+    if (!selectedFile.value) return
+    const loadedPages = Math.max(1, Math.ceil(results.value.length / PAGE_SIZE))
+    try {
+      const pages = await Promise.all(
+        Array.from({ length: loadedPages }, (_, index) =>
+          resultsApi.getResultContent(selectedFile.value as string, {
+            ...filters,
+            page: index + 1,
+            limit: PAGE_SIZE,
+          }),
+        ),
+      )
+      const merged: ResultItem[] = []
+      for (const data of pages) {
+        merged.push(...data.items)
+      }
+      results.value = merged
+      totalItems.value = pages[0]?.total_items ?? merged.length
+      page.value = loadedPages
+    } catch (e) {
+      if (e instanceof Error) error.value = e
     }
   }
 
@@ -171,10 +229,10 @@ export function useResults() {
   on('results_updated', async () => {
     const oldFile = selectedFile.value
     await fetchFiles()
-    // If the selected file remains the same, refresh its content (in case of append)
+    // If the selected file remains the same, refresh all currently loaded pages
     // If it changed (e.g. from null to new file), the watcher will handle it.
     if (selectedFile.value && selectedFile.value === oldFile) {
-      fetchResults()
+      refreshLoadedPages()
       fetchInsights()
     }
   })
@@ -225,11 +283,18 @@ export function useResults() {
     const itemId = item.商品信息?.商品ID
     if (!itemId) return
     const newStatus = item._status === 'hidden' ? 'active' : 'hidden'
+    // 乐观更新，交互即时响应
+    item._status = newStatus
+    item._effective_hidden = newStatus === 'hidden'
     try {
       await resultsApi.updateItemStatus(selectedFile.value, itemId, newStatus)
-      await fetchResults()
+      // 后台按服务端重新校准（总数/隐藏原因/黑名单命中都以服务端为准）
+      await refreshLoadedPages()
     } catch (e) {
       if (e instanceof Error) error.value = e
+      // 失败回滚
+      item._status = newStatus === 'hidden' ? 'active' : 'hidden'
+      item._effective_hidden = item._status === 'hidden'
     }
   }
 
@@ -299,11 +364,14 @@ export function useResults() {
     results,
     insights,
     totalItems,
+    hasMoreResults,
+    isLoadingMore,
     filters,
     isLoading,
     error,
     fetchFiles, // Expose to allow manual refresh
     refreshResults,
+    loadMoreResults,
     exportSelectedResults,
     deleteSelectedFile,
     toggleItemBlock,

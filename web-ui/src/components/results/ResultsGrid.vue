@@ -1,42 +1,56 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { ResultItem } from '@/types/result.d.ts'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
-import { ChevronDown } from 'lucide-vue-next'
+import { ChevronDown, LoaderCircle } from 'lucide-vue-next'
 import ResultCard from './ResultCard.vue'
 
 interface Props {
   results: ResultItem[]
   isLoading: boolean
+  totalItems?: number
+  isLoadingMore?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  totalItems: 0,
+  isLoadingMore: false,
+})
 const { t } = useI18n()
 
 const emit = defineEmits<{
   (e: 'toggle-block', item: ResultItem): void
+  (e: 'load-more'): void
 }>()
 const skeletonItems = Array.from({ length: 8 }, (_, index) => index)
 
-// 增量渲染：首屏渲染 60 条，滚动到底部或点击加载更多
-const PAGE_SIZE = 60
-const visibleCount = ref(PAGE_SIZE)
+const hasMore = computed(() => props.results.length < props.totalItems)
+const sentinel = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
 
-const visibleResults = computed(() => props.results.slice(0, visibleCount.value))
-const hasMore = computed(() => visibleCount.value < props.results.length)
-
-// 结果集变化（切换筛选/文件）时重置分页
-watch(
-  () => props.results,
-  () => {
-    visibleCount.value = PAGE_SIZE
-  },
-)
-
-function loadMore() {
-  visibleCount.value += PAGE_SIZE
+function requestMore() {
+  if (!hasMore.value || props.isLoadingMore || props.isLoading) return
+  emit('load-more')
 }
+
+onMounted(() => {
+  if (typeof IntersectionObserver === 'undefined') return
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        requestMore()
+      }
+    },
+    { rootMargin: '300px' },
+  )
+  if (sentinel.value) observer.observe(sentinel.value)
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  observer = null
+})
 </script>
 
 <template>
@@ -70,17 +84,24 @@ function loadMore() {
     <template v-else>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <ResultCard
-          v-for="item in visibleResults"
+          v-for="item in results"
           :key="item.商品信息.商品ID"
           :item="item"
           @toggle-block="emit('toggle-block', $event)"
         />
       </div>
 
-      <div v-if="hasMore" class="mt-4 flex flex-col items-center gap-1.5">
-        <Button variant="outline" size="sm" class="text-xs" @click="loadMore">
-          <ChevronDown class="h-3.5 w-3.5" />
-          {{ t('results.grid.loadMore', { shown: visibleCount, total: results.length }) }}
+      <div v-if="hasMore" ref="sentinel" class="mt-4 flex flex-col items-center gap-1.5">
+        <Button
+          variant="outline"
+          size="sm"
+          class="text-xs"
+          :disabled="isLoadingMore"
+          @click="requestMore"
+        >
+          <LoaderCircle v-if="isLoadingMore" class="h-3.5 w-3.5 animate-spin" />
+          <ChevronDown v-else class="h-3.5 w-3.5" />
+          {{ t('results.grid.loadMore', { shown: results.length, total: totalItems }) }}
         </Button>
       </div>
     </template>
