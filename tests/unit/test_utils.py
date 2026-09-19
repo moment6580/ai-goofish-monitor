@@ -51,4 +51,9 @@ def test_save_to_jsonl(tmp_path, monkeypatch):
             sort_order="asc",
         )
     )
-    assert records == [record]
+    expected = dict(record)
+    expected["_status"] = "active"
+    expected["_matched_blacklist_keywords"] = []
+    expected["_hidden_reason"] = None
+    expected["_effective_hidden"] = False
+    assert records == [expected]
