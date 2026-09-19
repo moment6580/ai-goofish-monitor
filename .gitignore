@@ -1,5 +1,7 @@
 .idea
 *.iml
+.venv
+venv/
 xianyu_state.json
 .env
 .aider*
