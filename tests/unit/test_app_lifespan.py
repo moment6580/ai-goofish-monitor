@@ -38,6 +38,10 @@ class _FakeProcessService:
         self.stop_all_called = True
 
 
+class _FakeSettings:
+    task_log_retention_days = 9
+
+
 def test_lifespan_cleans_task_logs_on_startup(monkeypatch):
     called = {}
     fake_scheduler = _FakeSchedulerService()
@@ -53,7 +57,7 @@ def test_lifespan_cleans_task_logs_on_startup(monkeypatch):
         "cleanup_task_logs",
         lambda *args, **kwargs: called.setdefault("keep_days", kwargs.get("keep_days")),
     )
-    monkeypatch.setattr(app_module.app_settings, "task_log_retention_days", 9)
+    monkeypatch.setattr(app_module, "get_app_settings", lambda: _FakeSettings())
 
     async def _run():
         async with app_module.lifespan(None):

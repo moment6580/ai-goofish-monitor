@@ -30,7 +30,7 @@ from src.services.task_log_cleanup_service import cleanup_task_logs
 from src.services.task_generation_service import TaskGenerationService
 from src.infrastructure.persistence.sqlite_bootstrap import bootstrap_sqlite_storage
 from src.infrastructure.persistence.sqlite_task_repository import SqliteTaskRepository
-from src.infrastructure.config.settings import settings as app_settings
+from src.infrastructure.config.settings import get_app_settings
 
 
 # 全局服务实例
@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
     # 启动时
     print("正在启动应用...")
     bootstrap_sqlite_storage()
-    cleanup_task_logs(keep_days=app_settings.task_log_retention_days)
+    cleanup_task_logs(keep_days=get_app_settings().task_log_retention_days)
 
     # 重置所有任务状态为停止
     task_repo = SqliteTaskRepository()
@@ -150,7 +150,8 @@ async def auth_status(payload: LoginRequest, request: Request):
     if not security.login_rate_limiter.allow(client):
         raise HTTPException(status_code=429, detail="尝试过于频繁，请稍后再试")
 
-    if payload.username == app_settings.web_username and payload.password == app_settings.web_password:
+    current = get_app_settings()
+    if payload.username == current.web_username and payload.password == current.web_password:
         security.login_rate_limiter.reset(client)
         return {
             "authenticated": True,
@@ -203,7 +204,6 @@ async def serve_spa(request: Request, full_path: str):
 
 if __name__ == "__main__":
     import uvicorn
-    from src.infrastructure.config.settings import settings
 
-    print(f"启动新架构应用，端口: {app_settings.server_port}")
-    uvicorn.run(app, host="0.0.0.0", port=app_settings.server_port)
+    print(f"启动新架构应用，端口: {get_app_settings().server_port}")
+    uvicorn.run(app, host="0.0.0.0", port=get_app_settings().server_port)

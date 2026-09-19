@@ -173,7 +173,7 @@ def test_create_task_rejects_invalid_cron_expression(api_client, sample_task_pay
     assert response.status_code == 422
 
 
-def test_delete_task_stops_runtime_and_reindexes_process_state(
+def test_delete_task_stops_runtime_and_keeps_task_ids_stable(
     api_client,
     api_context,
     sample_task_payload,
@@ -192,4 +192,5 @@ def test_delete_task_stops_runtime_and_reindexes_process_state(
     assert response.status_code == 200
     process_service = api_context["process_service"]
     assert process_service.stopped == [0]
-    assert process_service.reindexed == []
+    # 任务 ID 不允许漂移：删除任务后不得对运行时状态做整体重排
+    assert not hasattr(process_service, "reindex_after_delete")

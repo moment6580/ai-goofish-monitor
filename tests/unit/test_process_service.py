@@ -74,24 +74,22 @@ def test_process_service_marks_task_stopped_when_process_exits(monkeypatch, tmp_
     asyncio.run(run_scenario())
 
 
-def test_process_service_reindexes_runtime_maps_after_delete():
+def test_process_service_keeps_task_ids_stable_after_cleanup():
+    """清理某个任务的运行时状态后，其他任务的 ID 不得漂移。"""
     service = ProcessService()
     proc_a = object()
     proc_c = object()
-    watcher_a = object()
-    watcher_c = object()
 
     service.processes = {0: proc_a, 2: proc_c}
     service.log_paths = {0: "a.log", 2: "c.log"}
     service.task_names = {0: "A", 2: "C"}
-    service.exit_watchers = {0: watcher_a, 2: watcher_c}
 
-    service.reindex_after_delete(1)
+    service._cleanup_runtime(0, proc_a)
 
-    assert service.processes == {0: proc_a, 1: proc_c}
-    assert service.log_paths == {0: "a.log", 1: "c.log"}
-    assert service.task_names == {0: "A", 1: "C"}
-    assert service.exit_watchers == {0: watcher_a, 1: watcher_c}
+    # 仅移除被清理任务自身的条目，任务 2 的 ID 与状态保持原样
+    assert service.processes == {2: proc_c}
+    assert service.log_paths == {2: "c.log"}
+    assert service.task_names == {2: "C"}
 
 
 def test_process_service_adds_debug_limit_arg_when_env_enabled(monkeypatch):

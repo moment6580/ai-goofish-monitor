@@ -63,14 +63,16 @@ if not all([BASE_URL, MODEL_NAME]):
     client = None
 else:
     try:
+        import httpx
+
+        http_client = None
         if PROXY_URL:
             print(f"正在为AI请求使用HTTP/S代理: {PROXY_URL}")
-            # httpx 会自动从环境变量中读取代理设置
-            os.environ['HTTP_PROXY'] = PROXY_URL
-            os.environ['HTTPS_PROXY'] = PROXY_URL
+            # 仅将代理作用于 AI 客户端本身，不再污染全局环境变量，
+            # 避免影响同进程内的其他网络请求（通知、浏览器等）
+            http_client = httpx.AsyncClient(proxy=PROXY_URL, trust_env=False)
 
-        # openai 客户端内部的 httpx 会自动从环境变量中获取代理配置
-        client = AsyncOpenAI(api_key=API_KEY, base_url=BASE_URL)
+        client = AsyncOpenAI(api_key=API_KEY, base_url=BASE_URL, http_client=http_client)
     except Exception as e:
         print(f"初始化 OpenAI 客户端时出错: {e}")
         client = None

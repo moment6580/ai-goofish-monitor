@@ -124,8 +124,32 @@ def get_settings() -> AppSettings:
     return _settings_instance
 
 
+def get_app_settings() -> AppSettings:
+    """每次调用返回当前实例，保证 reload 后读到最新配置。"""
+    return get_settings()
+
+
+def get_ai_settings() -> AISettings:
+    """每次调用返回当前实例，保证 reload 后读到最新配置。"""
+    return ai_settings
+
+
+def get_notification_settings() -> NotificationSettings:
+    """每次调用返回当前实例，保证 reload 后读到最新配置。"""
+    return notification_settings
+
+
+def get_scraper_settings() -> ScraperSettings:
+    """每次调用返回当前实例，保证 reload 后读到最新配置。"""
+    return scraper_settings
+
+
 def reload_settings() -> None:
-    """重新加载全局配置实例"""
+    """重新加载全局配置实例
+
+    注意：模块级单例会被整体替换，使用方应通过 get_*_settings()
+    在调用时取值，而不是 `from ... import ai_settings` 后长期持有。
+    """
     global _settings_instance, settings, ai_settings, notification_settings, scraper_settings
     from dotenv import load_dotenv
     from src.infrastructure.config.env_manager import env_manager

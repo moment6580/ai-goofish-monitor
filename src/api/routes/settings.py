@@ -12,8 +12,8 @@ from src.api.dependencies import get_process_service
 from src.infrastructure.config.env_manager import env_manager
 from src.infrastructure.config.settings import (
     AISettings,
+    get_scraper_settings,
     reload_settings,
-    scraper_settings,
 )
 from src.services.ai_request_compat import (
     CHAT_COMPLETIONS_API_MODE,
@@ -233,8 +233,8 @@ async def get_system_status(
     return {
         "ai_configured": ai_settings.is_configured(),
         "notification_configured": notification_settings.has_any_notification_enabled(),
-        "headless_mode": scraper_settings.run_headless,
-        "running_in_docker": scraper_settings.running_in_docker,
+        "headless_mode": get_scraper_settings().run_headless,
+        "running_in_docker": get_scraper_settings().running_in_docker,
         "scraper_running": len(running_task_ids) > 0,
         "running_task_ids": running_task_ids,
         "login_state_file": {
