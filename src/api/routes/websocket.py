@@ -5,6 +5,10 @@ WebSocket 路由
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Set
 
+from src.api.security import (
+    authenticate_request,
+    WS_REJECTED_CLOSE_CODE,
+)
 
 router = APIRouter()
 
@@ -16,7 +20,14 @@ active_connections: Set[WebSocket] = set()
 async def websocket_endpoint(
     websocket: WebSocket,
 ):
-    """WebSocket 端点"""
+    """WebSocket 端点（需携带有效 token，支持 ?token= 查询参数）"""
+    username = authenticate_request(websocket)
+    if username is None:
+        # 先接受再以自定义关闭码断开，便于前端识别认证失败
+        await websocket.accept()
+        await websocket.close(code=WS_REJECTED_CLOSE_CODE)
+        return
+
     # 接受连接
     await websocket.accept()
     active_connections.add(websocket)
@@ -29,11 +40,10 @@ async def websocket_endpoint(
             # 这里可以处理客户端发送的消息
             # 目前我们主要用于服务端推送，所以暂时不处理
     except WebSocketDisconnect:
-        active_connections.remove(websocket)
+        active_connections.discard(websocket)
     except Exception as e:
         print(f"WebSocket 错误: {e}")
-        if websocket in active_connections:
-            active_connections.remove(websocket)
+        active_connections.discard(websocket)
 
 
 async def broadcast_message(message_type: str, data: dict):

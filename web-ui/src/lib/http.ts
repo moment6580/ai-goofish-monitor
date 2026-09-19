@@ -1,4 +1,4 @@
-import { useAuth } from '@/composables/useAuth'
+import { useAuth, getStoredToken } from '@/composables/useAuth'
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -6,8 +6,14 @@ interface FetchOptions extends RequestInit {
 
 export async function http(url: string, options: FetchOptions = {}) {
   const { logout } = useAuth()
-  
+
   const headers = new Headers(options.headers)
+
+  // Attach auth token for API requests
+  const token = getStoredToken()
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
 
   // Handle Query Params
   let fullUrl = url

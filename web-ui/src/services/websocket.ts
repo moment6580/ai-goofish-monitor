@@ -1,5 +1,16 @@
 type WebSocketEventHandler = (data: any) => void;
 
+const AUTH_EXPIRED_CLOSE_CODE = 4401;
+const AUTH_EXPIRED_EVENT = 'auth:expired';
+
+function buildWebSocketUrl(): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host; // This includes port if present
+  const token = localStorage.getItem('auth_token') || '';
+  const query = token ? `?token=${encodeURIComponent(token)}` : '';
+  return `${protocol}//${host}/ws${query}`;
+}
+
 class WebSocketService {
   private ws: WebSocket | null = null;
   private reconnectInterval = 3000;
@@ -33,13 +44,9 @@ class WebSocketService {
   }
 
   private connect() {
-    // Determine the protocol (ws or wss) based on the current page protocol
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host; // This includes port if present
+    const url = buildWebSocketUrl();
 
-    const url = `${protocol}//${host}/ws`;
-
-    console.log(`Connecting to WebSocket at ${url}`);
+    console.log(`Connecting to WebSocket at ${url.replace(/([?&])token=[^&]*/, '$1token=***')}`);
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
@@ -60,7 +67,16 @@ class WebSocketService {
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
+      // 4401 表示 token 无效或已过期：停止重连并通知登出
+      if (event.code === AUTH_EXPIRED_CLOSE_CODE) {
+        console.warn('WebSocket 认证失效，停止重连');
+        this.shouldConnect = false;
+        this.isConnected = false;
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+        return;
+      }
+
       if (this.isConnected) {
         console.log('WebSocket disconnected');
         this.isConnected = false;

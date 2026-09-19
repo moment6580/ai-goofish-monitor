@@ -136,17 +136,33 @@ from fastapi import Request, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from src.api import security
+
 class LoginRequest(BaseModel):
     username: str
     password: str
 
 
 @app.post("/auth/status")
-async def auth_status(payload: LoginRequest):
-    """检查认证状态"""
+async def auth_status(payload: LoginRequest, request: Request):
+    """校验登录凭据，成功后签发访问 token"""
+    client = security.client_key(request)
+    if not security.login_rate_limiter.allow(client):
+        raise HTTPException(status_code=429, detail="尝试过于频繁，请稍后再试")
+
     if payload.username == app_settings.web_username and payload.password == app_settings.web_password:
-        return {"authenticated": True, "username": payload.username}
+        security.login_rate_limiter.reset(client)
+        return {
+            "authenticated": True,
+            "username": payload.username,
+            "token": security.issue_token(payload.username),
+            "expires_in": security.TOKEN_TTL_SECONDS,
+        }
     raise HTTPException(status_code=401, detail="认证失败")
+
+
+# API 与 WebSocket 访问鉴权（/health、/auth/status 与静态资源豁免）
+app.middleware("http")(security.auth_middleware)
 
 
 # 主页路由 - 服务 Vue 3 SPA

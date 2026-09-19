@@ -5,7 +5,8 @@ services:
     pull_policy: always
     init: true
     ports:
-      - "8000:8000"
+      # 默认仅绑定本机回环地址；如需局域网/公网访问，请在 .env 中设置 BIND_IP=0.0.0.0
+      - "${BIND_IP:-127.0.0.1}:${SERVER_PORT:-8000}:${SERVER_PORT:-8000}"
     env_file:
       - .env
     environment:
