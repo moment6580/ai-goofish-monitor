@@ -2,6 +2,8 @@
 新架构的主应用入口
 整合所有路由和服务
 """
+import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -29,6 +31,10 @@ from src.services.scheduler_service import SchedulerService
 from src.services.spawn_registry import reap_orphan_spiders
 from src.services.task_log_cleanup_service import cleanup_task_logs
 from src.services.task_generation_service import TaskGenerationService
+from src.services.data_maintenance import (
+    MAINTENANCE_INTERVAL_SECONDS,
+    run_maintenance_once,
+)
 from src.infrastructure.persistence.sqlite_bootstrap import bootstrap_sqlite_storage
 from src.infrastructure.persistence.sqlite_task_repository import SqliteTaskRepository
 from src.infrastructure.config.settings import get_app_settings
@@ -89,15 +95,32 @@ async def lifespan(app: FastAPI):
     await scheduler_service.reload_jobs(tasks_list)
     scheduler_service.start()
 
+    # 数据维护：启动执行一次，之后每周循环（清理 + 备份）
+    await asyncio.to_thread(run_maintenance_once)
+    maintenance_task = asyncio.create_task(_maintenance_loop())
+
     print("应用启动完成")
 
     yield
 
     # 关闭时
     print("正在关闭应用...")
+    maintenance_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await maintenance_task
     scheduler_service.stop()
     await process_service.stop_all()
     print("应用已关闭")
+
+
+async def _maintenance_loop() -> None:
+    """周期性数据维护（默认每 7 天）。"""
+    while True:
+        await asyncio.sleep(MAINTENANCE_INTERVAL_SECONDS)
+        try:
+            await asyncio.to_thread(run_maintenance_once)
+        except Exception as exc:
+            print(f"[Maintenance] 数据维护执行失败: {exc}")
 
 
 # 创建 FastAPI 应用
