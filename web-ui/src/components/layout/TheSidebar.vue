@@ -129,7 +129,7 @@ const connectionLabel = computed(() => (
 
         <div class="flex items-center justify-between text-[11px] text-muted-foreground/80 pt-0.5">
           <span class="font-medium text-foreground">
-            AI 捡漏监控
+            闲鱼捡漏监控
           </span>
           <span class="font-mono text-[10px]">v2.1</span>
         </div>

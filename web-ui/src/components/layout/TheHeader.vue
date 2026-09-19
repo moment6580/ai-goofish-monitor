@@ -52,7 +52,7 @@ function goPrompts() {
         :aria-label="t('header.goHome')"
       >
         <h1 class="text-sm font-semibold tracking-tight">
-          AI Xianyu Hunter
+          Xianyu Hunter
         </h1>
         <Badge variant="outline" class="hidden sm:inline-flex text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground">
           Monitor
