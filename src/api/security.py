@@ -83,6 +83,23 @@ def reset_session_secret_cache() -> None:
         _secret_cache = None
 
 
+def _credential_fingerprint() -> str:
+    """当前登录凭据的指纹，混入签名密钥。
+
+    修改 WEB_USERNAME/WEB_PASSWORD 后（无需重启），所有旧 token 自动失效。
+    """
+    from src.infrastructure.config.settings import get_app_settings
+
+    app_settings = get_app_settings()
+    payload = f"{app_settings.web_username}:{app_settings.web_password}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _effective_signing_secret() -> str:
+    """签名密钥 = 持久化随机密钥 + 凭据指纹。"""
+    return f"{_load_or_create_session_secret()}:{_credential_fingerprint()}"
+
+
 def _b64encode(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
@@ -103,7 +120,7 @@ def issue_token(username: str, *, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     encoded_payload = _b64encode(payload)
-    secret = _load_or_create_session_secret()
+    secret = _effective_signing_secret()
     signature = _b64encode(_sign(encoded_payload.encode("ascii"), secret))
     return f"{encoded_payload}.{signature}"
 
@@ -114,7 +131,7 @@ def verify_token(token: Optional[str]) -> Optional[str]:
         return None
 
     encoded_payload, signature = token.split(".", 1)
-    secret = _load_or_create_session_secret()
+    secret = _effective_signing_secret()
     expected = _sign(encoded_payload.encode("ascii"), secret)
     try:
         actual = _b64decode(signature)
