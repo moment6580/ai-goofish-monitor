@@ -5,8 +5,10 @@ import os
 import re
 import sys
 import shutil
+import time
 import traceback
 from datetime import datetime, timedelta
+from io import BytesIO
 from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 
 import requests
@@ -61,6 +63,15 @@ DEFAULT_IMAGE_DOWNLOAD_CONCURRENCY = max(
     1,
     _positive_int(os.getenv("IMAGE_DOWNLOAD_CONCURRENCY", "3"), 3),
 )
+
+# 送入多模态模型的最大图片数量与压缩参数（降低 token 成本与请求延迟）
+DEFAULT_AI_MAX_IMAGES = _positive_int(os.getenv("AI_MAX_IMAGES", "6"), 6)
+AI_IMAGE_MAX_SIDE = _positive_int(os.getenv("AI_IMAGE_MAX_SIDE", "1024"), 1024)
+AI_IMAGE_JPEG_QUALITY = min(95, _positive_int(os.getenv("AI_IMAGE_JPEG_QUALITY", "80"), 80))
+
+# AI 请求日志清理节流（避免每次分析都扫描日志目录）
+_AI_LOG_CLEANUP_INTERVAL_SECONDS = 3600.0
+_ai_log_cleanup_last = 0.0
 
 
 def safe_print(text):
@@ -225,6 +236,26 @@ def cleanup_ai_logs(logs_dir: str, keep_days: int = 1) -> None:
         safe_print(f"   [日志] 清理AI日志时出错: {e}")
 
 
+def _build_ai_log_filename(product_id) -> str:
+    """AI 请求日志文件名：含微秒与安全化的商品ID，保证并发唯一。
+
+    目录清理按前 15 字符解析时间戳（"%%Y%%m%%d_%%H%%M%%S"），此命名保持兼容。
+    """
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    safe_product_id = re.sub(r"[^0-9A-Za-z_-]", "_", str(product_id))[:32] or "unknown"
+    return f"{current_time}_{safe_product_id}.log"
+
+
+def _maybe_cleanup_ai_logs(logs_dir: str) -> None:
+    """按小时节流清理，避免每次 AI 分析都扫描整个日志目录。"""
+    global _ai_log_cleanup_last
+    now = time.monotonic()
+    if now - _ai_log_cleanup_last < _AI_LOG_CLEANUP_INTERVAL_SECONDS:
+        return
+    _ai_log_cleanup_last = now
+    cleanup_ai_logs(logs_dir, keep_days=1)
+
+
 def encode_image_to_base64(image_path):
     """将本地图片文件编码为 Base64 字符串。"""
     if not image_path or not os.path.exists(image_path):
@@ -235,6 +266,55 @@ def encode_image_to_base64(image_path):
     except Exception as e:
         safe_print(f"编码图片时出错: {e}")
         return None
+
+
+def _compress_image_to_base64(image_path):
+    """按需缩放并压缩为 JPEG 后 base64（统一 mime，降低请求体积）。"""
+    try:
+        from PIL import Image
+
+        with Image.open(image_path) as img:
+            rgb = img.convert("RGB")
+            width, height = rgb.size
+            longest = max(width, height)
+            if longest > AI_IMAGE_MAX_SIDE:
+                scale = AI_IMAGE_MAX_SIDE / longest
+                rgb = rgb.resize(
+                    (max(1, int(width * scale)), max(1, int(height * scale))),
+                    Image.LANCZOS,
+                )
+            buffer = BytesIO()
+            rgb.save(buffer, format="JPEG", quality=AI_IMAGE_JPEG_QUALITY, optimize=True)
+            return base64.b64encode(buffer.getvalue()).decode("ascii")
+    except Exception as e:
+        safe_print(f"   [图片] 压缩失败，回退为原图: {e}")
+        return None
+
+
+def prepare_image_data_urls(image_paths) -> list[str]:
+    """把本地图片转换为多模态请求用的 data URL。
+
+    - 最多取前 AI_MAX_IMAGES 张，避免超大请求
+    - 缩放压缩后统一以 JPEG 编码
+    """
+    paths = list(image_paths or [])
+    if not paths:
+        return []
+
+    if len(paths) > DEFAULT_AI_MAX_IMAGES:
+        safe_print(
+            f"   [图片] 仅取前 {DEFAULT_AI_MAX_IMAGES} 张送入AI（共 {len(paths)} 张）"
+        )
+        paths = paths[:DEFAULT_AI_MAX_IMAGES]
+
+    data_urls: list[str] = []
+    for path in paths:
+        encoded = _compress_image_to_base64(path)
+        if encoded is None:
+            encoded = encode_image_to_base64(path)
+        if encoded:
+            data_urls.append(f"data:image/jpeg;base64,{encoded}")
+    return data_urls
 
 
 def validate_ai_response_format(parsed_response):
@@ -322,12 +402,7 @@ async def get_ai_analysis(product_data, image_paths=None, prompt_text=""):
         safe_print(prompt_text)
         safe_print("-------------------\n")
 
-    image_data_urls = []
-    if image_paths:
-        for path in image_paths:
-            base64_image = encode_image_to_base64(path)
-            if base64_image:
-                image_data_urls.append(f"data:image/jpeg;base64,{base64_image}")
+    image_data_urls = await asyncio.to_thread(prepare_image_data_urls, image_paths)
 
     combined_text_prompt = build_analysis_text_prompt(
         product_details_json,
@@ -342,16 +417,15 @@ async def get_ai_analysis(product_data, image_paths=None, prompt_text=""):
         # 创建logs文件夹
         logs_dir = os.path.join("logs", "ai")
         os.makedirs(logs_dir, exist_ok=True)
-        cleanup_ai_logs(logs_dir, keep_days=1)
+        _maybe_cleanup_ai_logs(logs_dir)
 
-        # 生成日志文件名（当前时间）
-        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_filename = f"{current_time}.log"
+        # 生成日志文件名（含微秒与商品ID，避免并发分析同秒互相覆盖）
+        log_filename = _build_ai_log_filename(product_id)
         log_filepath = os.path.join(logs_dir, log_filename)
 
         task_name = product_data.get("任务名称") or product_data.get("任务名") or "unknown"
         log_payload = {
-            "timestamp": current_time,
+            "timestamp": datetime.now().isoformat(),
             "task_name": task_name,
             "product_id": product_id,
             "title": item_info.get("商品标题", "无"),
