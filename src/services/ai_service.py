@@ -46,9 +46,11 @@ class AIAnalysisService:
             return None
 
     def _validate_result(self, result: Dict) -> bool:
-        """验证 AI 分析结果的格式"""
+        """验证 AI 分析结果的格式
+
+        注：prompt_version 仅用于追溯，模型漏填不视为格式错误。
+        """
         required_fields = [
-            "prompt_version",
             "is_recommended",
             "reason",
             "risk_tags",

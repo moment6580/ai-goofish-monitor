@@ -64,3 +64,39 @@ def test_extract_ai_response_content_raises_when_content_and_reasoning_content_a
 
     with pytest.raises(EmptyAIResponseError):
         extract_ai_response_content(response)
+
+
+def test_parse_ai_response_json_accepts_python_literal_single_quotes():
+    """兼容模型输出的单引号 Python 风格伪 JSON（如智谱等模型偶发）。"""
+    content = "{'is_recommended': True, 'reason': 'single-quoted', 'risk_tags': [], 'criteria_analysis': {'seller_type': '个人'}}"
+
+    result = parse_ai_response_json(content)
+
+    assert result["is_recommended"] is True
+    assert result["reason"] == "single-quoted"
+    assert result["criteria_analysis"]["seller_type"] == "个人"
+
+
+def test_parse_ai_response_json_prefers_standard_json_over_literal():
+    content = '{"is_recommended": false, "reason": "normal"}'
+    assert parse_ai_response_json(content) == {"is_recommended": False, "reason": "normal"}
+
+
+def test_parse_ai_response_json_still_raises_for_unparseable_python_literal():
+    with pytest.raises(ValueError):
+        parse_ai_response_json("{'broken': , 'reason': }")
+
+
+def test_validate_ai_response_format_allows_missing_prompt_version():
+    from src.ai_handler import validate_ai_response_format
+
+    payload = {
+        "is_recommended": True,
+        "reason": "ok",
+        "risk_tags": [],
+        "criteria_analysis": {"seller_type": "个人"},
+    }
+    assert validate_ai_response_format(payload) is True
+
+    # 缺少真正必需的业务字段仍需失败
+    assert validate_ai_response_format({"is_recommended": True, "reason": "x"}) is False

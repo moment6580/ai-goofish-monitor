@@ -318,9 +318,11 @@ def prepare_image_data_urls(image_paths) -> list[str]:
 
 
 def validate_ai_response_format(parsed_response):
-    """验证AI响应的格式是否符合预期结构"""
+    """验证AI响应的格式是否符合预期结构
+
+    注：prompt_version 仅用于追溯，模型漏填不视为格式错误（前端类型也是可选）。
+    """
     required_fields = [
-        "prompt_version",
         "is_recommended",
         "reason",
         "risk_tags",

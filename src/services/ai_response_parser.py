@@ -1,6 +1,7 @@
 """
 AI 响应解析工具
 """
+import ast
 import json
 from typing import Any
 
@@ -45,12 +46,33 @@ def extract_ai_response_content(response: Any) -> str:
 
 
 def parse_ai_response_json(content: str) -> dict:
-    """解析 AI 文本响应中的 JSON。"""
+    """解析 AI 文本响应中的 JSON。
+
+    兼容常见模型输出偏差：
+    - 包裹在 markdown 代码围栏中的 JSON
+    - 前后夹杂说明文字、只提取其中的 JSON 对象
+    - 单引号 / Python 字面量风格（如 {'a': True}）
+    """
     cleaned = _strip_code_fences(content)
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError as exc:
+        literal = _try_python_literal(cleaned)
+        if literal is not None:
+            return literal
         return _extract_first_json_value(cleaned, exc)
+
+
+def _try_python_literal(content: str) -> dict | None:
+    """尝试把 Python 字面量风格的"伪 JSON"（单引号等）解析为字典。"""
+    text = content.strip()
+    if not text.startswith("{"):
+        return None
+    try:
+        parsed = ast.literal_eval(text)
+    except (ValueError, SyntaxError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def _coerce_content_parts(content: Any) -> str:
