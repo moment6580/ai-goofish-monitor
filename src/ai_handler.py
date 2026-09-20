@@ -332,7 +332,17 @@ def validate_ai_response_format(parsed_response):
     # 检查顶层字段
     for field in required_fields:
         if field not in parsed_response:
-            safe_print(f"   [AI分析] 警告：响应缺少必需字段 '{field}'")
+            received = ", ".join(sorted(str(key) for key in parsed_response.keys())) or "无"
+            safe_print(
+                f"   [AI分析] 警告：响应缺少必需字段 '{field}'；实际收到字段: [{received}]"
+            )
+            if "decision" in parsed_response or "score" in parsed_response:
+                safe_print(
+                    "   [AI分析] 提示：检测到 decision/score 等自定义字段，"
+                    "可能是 criteria 文件自行定义了输出格式；"
+                    "请让 criteria 仅描述评估标准，输出结构以 base_prompt 为准 "
+                    "(is_recommended/reason/risk_tags/criteria_analysis)。"
+                )
             return False
 
     # 检查criteria_analysis是否为字典且不为空

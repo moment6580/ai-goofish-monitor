@@ -60,7 +60,8 @@ class AIAnalysisService:
         # 检查必需字段
         for field in required_fields:
             if field not in result:
-                print(f"AI 响应缺少必需字段: {field}")
+                received = ", ".join(sorted(str(key) for key in result.keys())) or "无"
+                print(f"AI 响应缺少必需字段: {field}；实际收到字段: [{received}]")
                 return False
 
         # 检查数据类型
