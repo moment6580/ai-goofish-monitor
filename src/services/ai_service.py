@@ -50,6 +50,11 @@ class AIAnalysisService:
 
         注：prompt_version 仅用于追溯，模型漏填不视为格式错误。
         """
+        # 响应必须是 JSON 对象；数组/字符串等形态直接判为格式不合法
+        if not isinstance(result, dict):
+            print(f"AI 响应类型不是 JSON 对象: {type(result).__name__}")
+            return False
+
         required_fields = [
             "is_recommended",
             "reason",

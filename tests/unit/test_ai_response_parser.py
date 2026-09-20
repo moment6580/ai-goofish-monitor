@@ -100,3 +100,21 @@ def test_validate_ai_response_format_allows_missing_prompt_version():
 
     # 缺少真正必需的业务字段仍需失败
     assert validate_ai_response_format({"is_recommended": True, "reason": "x"}) is False
+
+
+def test_validate_ai_response_format_rejects_non_dict_without_crashing():
+    """模型返回顶层数组等非对象时，必须判为格式不合法（触发重试），不得抛异常。"""
+    from src.ai_handler import validate_ai_response_format
+
+    # 此前这里会因 parsed_response.keys() 抛 AttributeError 导致分析直接失败
+    assert validate_ai_response_format([{"is_recommended": True}]) is False
+    assert validate_ai_response_format("just a string") is False
+    assert validate_ai_response_format(None) is False
+
+
+def test_ai_service_validate_result_rejects_non_dict():
+    from src.services.ai_service import AIAnalysisService
+
+    service = AIAnalysisService.__new__(AIAnalysisService)  # 不初始化 client
+    assert service._validate_result([{"is_recommended": True}]) is False
+    assert service._validate_result("string") is False

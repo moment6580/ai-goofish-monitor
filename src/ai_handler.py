@@ -322,6 +322,13 @@ def validate_ai_response_format(parsed_response):
 
     注：prompt_version 仅用于追溯，模型漏填不视为格式错误（前端类型也是可选）。
     """
+    # 响应必须是 JSON 对象；数组/字符串等形态直接判为格式不合法，交由调用方重试
+    if not isinstance(parsed_response, dict):
+        safe_print(
+            f"   [AI分析] 警告：响应类型不是 JSON 对象（实际: {type(parsed_response).__name__}）"
+        )
+        return False
+
     required_fields = [
         "is_recommended",
         "reason",
