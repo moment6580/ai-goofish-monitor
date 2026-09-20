@@ -51,21 +51,42 @@ def _looks_like_mobile(ua: str) -> Optional[bool]:
     return None
 
 
+def _snapshot_user_agent(snapshot: dict) -> str:
+    headers = snapshot.get("headers") or {}
+    navigator = (snapshot.get("env") or {}).get("navigator") or {}
+    return str(
+        headers.get("User-Agent")
+        or headers.get("user-agent")
+        or navigator.get("userAgent")
+        or ""
+    )
+
+
+def snapshot_is_mobile(snapshot: dict) -> bool:
+    """快照环境是否为移动端；无法判定时按非移动处理（保持项目默认移动端模拟）。"""
+    return _looks_like_mobile(_snapshot_user_agent(snapshot)) is True
+
+
 def _build_context_overrides(snapshot: dict) -> dict:
+    """从增强快照提取上下文覆盖参数。
+
+    重要：抓取链路依赖闲鱼移动端 H5 页面与接口（选择器、搜索接口均为移动端），
+    因此 UA/视口/触屏等显示环境**仅在快照本身来自移动端时**才覆盖；
+    桌面浏览器导出的快照会保持项目默认的移动端模拟，否则页面会走 PC 版、
+    移动端搜索接口永不触发，任务表现为等待响应超时。
+    """
     env = snapshot.get("env") or {}
     headers = snapshot.get("headers") or {}
     navigator = env.get("navigator") or {}
     screen = env.get("screen") or {}
     intl = env.get("intl") or {}
 
-    overrides = {}
+    overrides: dict = {}
 
-    ua = (
-        headers.get("User-Agent")
-        or headers.get("user-agent")
-        or navigator.get("userAgent")
-    )
-    if ua:
+    ua = _snapshot_user_agent(snapshot)
+    mobile_flag = _looks_like_mobile(ua)
+
+    if ua and mobile_flag is True:
         overrides["user_agent"] = ua
 
     accept_language = headers.get("Accept-Language") or headers.get("accept-language")
@@ -81,33 +102,21 @@ def _build_context_overrides(snapshot: dict) -> dict:
     if tz:
         overrides["timezone_id"] = tz
 
-    width = screen.get("width")
-    height = screen.get("height")
-    if isinstance(width, (int, float)) and isinstance(height, (int, float)):
-        overrides["viewport"] = {"width": int(width), "height": int(height)}
+    # 显示环境（视口/像素比/触屏/移动端标记）仅在移动端快照下应用
+    if mobile_flag is True:
+        width = screen.get("width")
+        height = screen.get("height")
+        if isinstance(width, (int, float)) and isinstance(height, (int, float)):
+            overrides["viewport"] = {"width": int(width), "height": int(height)}
 
-    dpr = screen.get("devicePixelRatio")
-    if isinstance(dpr, (int, float)):
-        overrides["device_scale_factor"] = float(dpr)
+        dpr = screen.get("devicePixelRatio")
+        if isinstance(dpr, (int, float)):
+            overrides["device_scale_factor"] = float(dpr)
 
-    touch_points = navigator.get("maxTouchPoints")
-    if isinstance(touch_points, (int, float)):
-        overrides["has_touch"] = touch_points > 0
+        touch_points = navigator.get("maxTouchPoints")
+        if isinstance(touch_points, (int, float)):
+            overrides["has_touch"] = touch_points > 0
 
-    mobile_flag = _looks_like_mobile(ua or "")
-    if mobile_flag is not None:
-        overrides["is_mobile"] = mobile_flag
+        overrides["is_mobile"] = True
 
     return _clean_kwargs(overrides)
-
-
-def _build_extra_headers(raw_headers: Optional[dict]) -> dict:
-    if not raw_headers:
-        return {}
-    excluded = {"cookie", "content-length"}
-    headers = {}
-    for key, value in raw_headers.items():
-        if not key or key.lower() in excluded or value is None:
-            continue
-        headers[key] = value
-    return headers

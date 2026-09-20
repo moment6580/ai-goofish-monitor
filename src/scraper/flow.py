@@ -68,10 +68,10 @@ from src.services.search_pagination import (
 )
 from src.scraper.browser import (
     _build_context_overrides,
-    _build_extra_headers,
     _clean_kwargs,
     _default_context_options,
     _resolve_browser_channel,
+    snapshot_is_mobile,
 )
 from src.scraper.config_parsing import (
     _get_ai_analysis_concurrency,
@@ -234,11 +234,17 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
                     for key in ("env", "headers", "page", "storage")
                 ):
                     print(f"检测到增强浏览器快照，应用环境参数: {state_file}")
+                    if not snapshot_is_mobile(snapshot_data):
+                        print(
+                            "检测到桌面端快照：已保持移动端页面模拟（抓取依赖闲鱼移动端接口），"
+                            "仅应用语言/时区等安全参数。"
+                        )
+                    print(
+                        "提示：快照中的抓包请求头不会全局注入，"
+                        "避免 Fetch 元数据冲突导致页面接口不触发。"
+                    )
                     storage_state_arg = {"cookies": snapshot_data.get("cookies", [])}
                     context_kwargs.update(_build_context_overrides(snapshot_data))
-                    extra_headers = _build_extra_headers(snapshot_data.get("headers"))
-                    if extra_headers:
-                        context_kwargs["extra_http_headers"] = extra_headers
                 else:
                     storage_state_arg = snapshot_data
 
