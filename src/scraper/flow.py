@@ -23,6 +23,7 @@ from playwright.async_api import (
 )
 
 from src.ai_handler import (
+    cleanup_task_images,
     download_all_images,
     get_ai_analysis,
     send_ntfy_notification,
@@ -79,7 +80,11 @@ from src.scraper.config_parsing import (
     _should_analyze_images,
 )
 from src.scraper.exceptions import LoginRequiredError, RiskControlError
-from src.scraper.failure import _is_login_url, _notify_task_failure
+from src.scraper.failure import (
+    FAILURE_GUARD,
+    _is_login_url,
+    _notify_task_failure,
+)
 from src.scraper.user_profile import scrape_user_profile
 
 

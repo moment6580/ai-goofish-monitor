@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from src.ai_handler import send_ntfy_notification
 from src.failure_guard import FailureGuard
 
 
