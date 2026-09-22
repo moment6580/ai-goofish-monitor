@@ -98,7 +98,7 @@ function goPrompts() {
       <Button
         variant="ghost"
         size="icon"
-        class="h-8 w-8 text-muted-foreground hover:text-foreground"
+        class="h-9 w-9 text-muted-foreground hover:text-foreground"
         :aria-label="t('header.toggleTheme')"
         @click="toggleTheme"
       >
@@ -111,7 +111,7 @@ function goPrompts() {
       <Button
         variant="ghost"
         size="icon"
-        class="h-8 w-8 text-muted-foreground hover:text-foreground"
+        class="h-9 w-9 text-muted-foreground hover:text-foreground"
         :aria-label="t('header.openNotifications')"
         @click="goNotifications"
       >
@@ -121,7 +121,7 @@ function goPrompts() {
       <Button
         variant="ghost"
         size="icon"
-        class="hidden h-8 w-8 text-muted-foreground hover:text-foreground sm:inline-flex"
+        class="hidden h-9 w-9 text-muted-foreground hover:text-foreground sm:inline-flex"
         :aria-label="t('header.openPrompts')"
         @click="goPrompts"
       >
@@ -144,11 +144,11 @@ function goPrompts() {
       <Button
         variant="ghost"
         size="icon"
-        class="h-8 w-8 text-muted-foreground md:hidden"
+        class="h-9 w-9 text-muted-foreground md:hidden"
         :aria-label="t('header.openNavigation')"
         @click="toggleMobileNav"
       >
-        <Menu class="h-4 w-4" />
+        <Menu class="h-5 w-5" />
       </Button>
     </div>
   </header>

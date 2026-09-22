@@ -28,7 +28,7 @@ const { t } = useI18n()
           :aria-label="t('common.close')"
           @click="closeMobileNav"
         />
-        <aside class="relative h-full w-72 border-r bg-background p-4 shadow-lg">
+        <aside class="relative h-full w-72 border-r bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg">
           <TheSidebar class="pt-16" @navigate="closeMobileNav" />
         </aside>
       </div>
@@ -36,12 +36,12 @@ const { t } = useI18n()
 
     <div class="flex flex-grow">
       <!-- Sidebar -->
-      <aside class="hidden md:block w-56 flex-shrink-0 border-r bg-background">
+      <aside class="hidden md:block w-60 flex-shrink-0 border-r bg-background">
         <TheSidebar class="sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto p-3" />
       </aside>
 
       <!-- Main Content Area -->
-      <main id="main-content" tabindex="-1" class="flex-grow overflow-x-hidden p-4 focus:outline-none md:p-6">
+      <main id="main-content" tabindex="-1" class="flex-grow overflow-x-hidden p-4 pb-[max(1rem,env(safe-area-inset-bottom))] focus:outline-none md:p-6">
         <div class="mx-auto max-w-6xl">
           <RouterView />
         </div>

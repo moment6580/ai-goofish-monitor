@@ -45,7 +45,7 @@ const connectionLabel = computed(() => (
     <div class="space-y-4">
       <!-- 分组 1: 核心监控与捡漏 -->
       <div class="space-y-1">
-        <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+        <p class="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
           {{ t('sidebar.groupMonitoring') }}
         </p>
 
@@ -53,7 +53,7 @@ const connectionLabel = computed(() => (
           v-for="item in mainNavItems"
           :key="item.to"
           :to="item.to"
-          class="relative group flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors"
+          class="relative group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors"
           :class="isActiveLink(item.to)
             ? 'bg-accent text-accent-foreground font-semibold shadow-xs'
             : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
@@ -61,12 +61,12 @@ const connectionLabel = computed(() => (
         >
           <span
             v-if="isActiveLink(item.to)"
-            class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary"
+            class="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary"
           />
 
           <component
             :is="item.icon"
-            class="h-4 w-4 shrink-0 transition-colors"
+            class="h-[18px] w-[18px] shrink-0 transition-colors"
             :class="isActiveLink(item.to) ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'"
           />
           <span class="truncate">{{ item.label }}</span>
@@ -75,7 +75,7 @@ const connectionLabel = computed(() => (
 
       <!-- 分组 2: 账号与管理 -->
       <div class="space-y-1 pt-1">
-        <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+        <p class="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
           {{ t('sidebar.groupControl') }}
         </p>
 
@@ -83,7 +83,7 @@ const connectionLabel = computed(() => (
           v-for="item in systemNavItems"
           :key="item.to"
           :to="item.to"
-          class="relative group flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors"
+          class="relative group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors"
           :class="isActiveLink(item.to)
             ? 'bg-accent text-accent-foreground font-semibold shadow-xs'
             : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
@@ -91,12 +91,12 @@ const connectionLabel = computed(() => (
         >
           <span
             v-if="isActiveLink(item.to)"
-            class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary"
+            class="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary"
           />
 
           <component
             :is="item.icon"
-            class="h-4 w-4 shrink-0 transition-colors"
+            class="h-[18px] w-[18px] shrink-0 transition-colors"
             :class="isActiveLink(item.to) ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'"
           />
           <span class="truncate">{{ item.label }}</span>
@@ -106,11 +106,11 @@ const connectionLabel = computed(() => (
 
     <!-- 底部状态小卡片 (Kokonut UI 风格) -->
     <div class="pt-4 px-1">
-      <div class="rounded-lg border border-border/80 bg-muted/30 p-2.5 space-y-1.5">
+      <div class="rounded-lg border border-border/80 bg-muted/30 p-3 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{{ t('sidebar.liveEngine') }}</span>
+          <span class="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{{ t('sidebar.liveEngine') }}</span>
           <span
-            class="inline-flex items-center gap-1 text-[10px] font-medium"
+            class="inline-flex items-center gap-1 text-[11px] font-medium"
             :class="isConnected ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'"
           >
             <span class="relative flex h-1.5 w-1.5">
@@ -127,7 +127,7 @@ const connectionLabel = computed(() => (
           </span>
         </div>
 
-        <div class="flex items-center justify-between text-[11px] text-muted-foreground/80 pt-0.5">
+        <div class="flex items-center justify-between text-xs text-muted-foreground/80 pt-0.5">
           <span class="font-medium text-foreground">
             {{ t('sidebar.engineTitle') }}
           </span>
