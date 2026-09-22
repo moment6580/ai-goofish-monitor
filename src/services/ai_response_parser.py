@@ -52,15 +52,25 @@ def parse_ai_response_json(content: str) -> dict:
     - 包裹在 markdown 代码围栏中的 JSON
     - 前后夹杂说明文字、只提取其中的 JSON 对象
     - 单引号 / Python 字面量风格（如 {'a': True}）
+    - 对象被包在顶层数组中（如 [{...}]），自动解包第一个对象
     """
     cleaned = _strip_code_fences(content)
     try:
-        return json.loads(cleaned)
+        return _unwrap_single_object(json.loads(cleaned))
     except json.JSONDecodeError as exc:
         literal = _try_python_literal(cleaned)
         if literal is not None:
             return literal
-        return _extract_first_json_value(cleaned, exc)
+        return _unwrap_single_object(_extract_first_json_value(cleaned, exc))
+
+
+def _unwrap_single_object(parsed):
+    """模型偶发把结果对象包在数组里返回；提取其中第一个对象。"""
+    if isinstance(parsed, list):
+        for item in parsed:
+            if isinstance(item, dict):
+                return item
+    return parsed
 
 
 def _try_python_literal(content: str) -> dict | None:

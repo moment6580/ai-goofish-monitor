@@ -317,6 +317,38 @@ def prepare_image_data_urls(image_paths) -> list[str]:
     return data_urls
 
 
+def normalize_ai_analysis_payload(parsed_response):
+    """对模型可接受的常见偏差做归一化，避免因可选结构缺失导致整条分析失败。
+
+    - risk_tags 缺失或非列表 → 归一化为列表
+    - criteria_analysis 缺失/为空/非 dict → 构造最小结构
+    - criteria_analysis.seller_type 缺失 → 填充 UNKNOWN 占位（保留分析结果供人工复核）
+    """
+    if not isinstance(parsed_response, dict):
+        return parsed_response
+
+    normalized = dict(parsed_response)
+
+    risk_tags = normalized.get("risk_tags")
+    if risk_tags is None:
+        normalized["risk_tags"] = []
+    elif not isinstance(risk_tags, list):
+        normalized["risk_tags"] = [str(risk_tags)]
+
+    criteria = normalized.get("criteria_analysis")
+    if not isinstance(criteria, dict):
+        criteria = {}
+    criteria = dict(criteria)
+    if not isinstance(criteria.get("seller_type"), dict):
+        criteria["seller_type"] = {
+            "status": "UNKNOWN",
+            "comment": "模型未提供卖家画像分析，建议人工复核。",
+            "evidence": "",
+        }
+    normalized["criteria_analysis"] = criteria
+    return normalized
+
+
 def validate_ai_response_format(parsed_response):
     """验证AI响应的格式是否符合预期结构
 
@@ -512,6 +544,8 @@ async def get_ai_analysis(product_data, image_paths=None, prompt_text=""):
 
             try:
                 parsed_response = parse_ai_response_json(ai_response_content)
+                # 归一化常见偏差（数组解包/补全可选结构），减少无谓重试
+                parsed_response = normalize_ai_analysis_payload(parsed_response)
 
                 # 验证响应格式
                 if validate_ai_response_format(parsed_response):
@@ -521,6 +555,9 @@ async def get_ai_analysis(product_data, image_paths=None, prompt_text=""):
                 if attempt < max_retries - 1:
                     safe_print(f"   [AI分析] 准备第{attempt + 2}次重试...")
                     continue
+                safe_print(
+                    f"   [AI分析] 最后一次响应内容(截断300字): {str(ai_response_content)[:300]}"
+                )
                 raise ValueError("AI响应格式缺少必需字段或字段类型不正确。")
             except json.JSONDecodeError as e:
                 safe_print(f"   [AI分析] 第{attempt + 1}次尝试JSON解析失败: {e}")

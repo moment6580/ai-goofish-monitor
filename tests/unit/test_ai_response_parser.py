@@ -118,3 +118,45 @@ def test_ai_service_validate_result_rejects_non_dict():
     service = AIAnalysisService.__new__(AIAnalysisService)  # 不初始化 client
     assert service._validate_result([{"is_recommended": True}]) is False
     assert service._validate_result("string") is False
+
+
+def test_parse_ai_response_json_unwraps_object_wrapped_in_array():
+    """模型偶发返回 [{...}]，应自动解包其中的对象。"""
+    content = '[{"is_recommended": true, "reason": "wrapped in array", "risk_tags": [], "criteria_analysis": {"seller_type": {"status": "PASS"}}}]'
+
+    result = parse_ai_response_json(content)
+
+    assert isinstance(result, dict)
+    assert result["reason"] == "wrapped in array"
+
+
+def test_parse_ai_response_json_array_without_object_still_returns_list():
+    content = '["a", "b"]'
+    assert parse_ai_response_json(content) == ["a", "b"]
+
+
+def test_normalize_payload_fills_optional_structure():
+    from src.ai_handler import normalize_ai_analysis_payload, validate_ai_response_format
+
+    # 缺失 criteria_analysis / risk_tags 的缩写响应应被归一化并通过校验
+    payload = {"is_recommended": True, "reason": "缩写响应"}
+    normalized = normalize_ai_analysis_payload(payload)
+
+    assert normalized["risk_tags"] == []
+    assert normalized["criteria_analysis"]["seller_type"]["status"] == "UNKNOWN"
+    assert validate_ai_response_format(normalized) is True
+
+
+def test_normalize_payload_keeps_existing_seller_type():
+    from src.ai_handler import normalize_ai_analysis_payload
+
+    payload = {
+        "is_recommended": False,
+        "reason": "ok",
+        "risk_tags": "not-a-list",
+        "criteria_analysis": {"seller_type": {"status": "FAIL", "comment": "商家"}},
+    }
+    normalized = normalize_ai_analysis_payload(payload)
+
+    assert normalized["risk_tags"] == ["not-a-list"]
+    assert normalized["criteria_analysis"]["seller_type"]["status"] == "FAIL"
