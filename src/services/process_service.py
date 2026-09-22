@@ -67,7 +67,7 @@ class ProcessService:
             await result
 
     def _resolve_cookie_path(self, task_name: str) -> str | None:
-        """Best-effort cookie/state path for a task."""
+        """Best-effort cookie/state path for a task。"""
         try:
             task = find_task_by_name_sync(task_name)
             if task and isinstance(task.account_state_file, str) and task.account_state_file.strip():
@@ -75,7 +75,26 @@ class ProcessService:
         except Exception:
             pass
 
-        return STATE_FILE if os.path.exists(STATE_FILE) else None
+        if os.path.exists(STATE_FILE):
+            return STATE_FILE
+
+        # 未绑定账号（auto/轮换策略）：回退到账号池目录中"最新更新"的状态文件。
+        # 否则 cookie_path 为 None，失败保护的"登录态更新后自动恢复"永远不会触发。
+        state_dir = str(os.getenv("ACCOUNT_STATE_DIR", "state")).strip().strip('"').strip("'")
+        try:
+            candidates = [
+                os.path.join(state_dir, name)
+                for name in os.listdir(state_dir)
+                if name.endswith(".json")
+            ]
+        except OSError:
+            return None
+        if not candidates:
+            return None
+        try:
+            return max(candidates, key=os.path.getmtime)
+        except OSError:
+            return candidates[0]
 
     def is_running(self, task_id: int) -> bool:
         """检查任务是否正在运行"""

@@ -144,3 +144,105 @@ def test_describe_last_skip_reports_pause_details(tmp_path, monkeypatch):
         assert service.describe_last_skip("other-task") is None
 
     asyncio.run(run_scenario())
+
+
+def test_resolve_cookie_path_prefers_bound_account(tmp_path, monkeypatch):
+    service = _make_service(tmp_path, monkeypatch)
+    bound = tmp_path / "state" / "bound.json"
+    bound.parent.mkdir()
+    bound.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        "src.services.process_service.find_task_by_name_sync",
+        lambda name: SimpleNamespace(account_state_file=str(bound)),
+    )
+
+    assert service._resolve_cookie_path("task") == str(bound)
+
+
+def test_resolve_cookie_path_falls_back_to_newest_pool_state(tmp_path, monkeypatch):
+    service = _make_service(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        "src.services.process_service.find_task_by_name_sync",
+        lambda name: SimpleNamespace(account_state_file=None),
+    )
+    monkeypatch.setattr(
+        "src.services.process_service.STATE_FILE", str(tmp_path / "missing.json")
+    )
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    older = state_dir / "old.json"
+    older.write_text("{}", encoding="utf-8")
+    newer = state_dir / "Default.json"
+    newer.write_text("{}", encoding="utf-8")
+    import os
+
+    os.utime(older, (1000, 1000))
+    os.utime(newer, (2000, 2000))
+    monkeypatch.setenv("ACCOUNT_STATE_DIR", str(state_dir))
+
+    assert service._resolve_cookie_path("task") == str(newer)
+
+
+def test_resolve_cookie_path_none_when_no_state_available(tmp_path, monkeypatch):
+    service = _make_service(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        "src.services.process_service.find_task_by_name_sync", lambda name: None
+    )
+    monkeypatch.setattr(
+        "src.services.process_service.STATE_FILE", str(tmp_path / "missing.json")
+    )
+    monkeypatch.setenv("ACCOUNT_STATE_DIR", str(tmp_path / "no-such-dir"))
+
+    assert service._resolve_cookie_path("task") is None
+
+
+def test_start_task_auto_recovers_after_pool_state_updated(tmp_path, monkeypatch):
+    """未绑定账号的任务：更新账号池中的登录态后，失败保护应自动恢复启动。"""
+    import os
+
+    from src.failure_guard import FailureGuard
+    from src.services.process_service import ProcessService
+
+    guard_path = tmp_path / "guard.json"
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    cookie = state_dir / "Default.json"
+    cookie.write_text("{}", encoding="utf-8")
+    os.utime(cookie, (1000, 1000))
+
+    monkeypatch.setenv("TASK_FAILURE_GUARD_PATH", str(guard_path))
+    monkeypatch.setenv("ACCOUNT_STATE_DIR", str(state_dir))
+    monkeypatch.setattr(
+        "src.services.process_service.STATE_FILE", str(tmp_path / "missing.json")
+    )
+    monkeypatch.setattr(
+        "src.services.process_service.find_task_by_name_sync",
+        lambda name: SimpleNamespace(account_state_file=None),
+    )
+    monkeypatch.setattr(
+        "src.services.process_service.build_task_log_path",
+        lambda task_id, _task_name: str(tmp_path / f"task-{task_id}.log"),
+    )
+
+    # 记录一次失败并进入暂停
+    FailureGuard().record_failure(
+        "Mac mini M4", "Login required", cookie_path=str(cookie), min_failures_to_pause=1
+    )
+
+    # 用户更新登录态（mtime 变新）
+    os.utime(cookie, (2000, 2000))
+
+    async def run_scenario():
+        service = ProcessService()
+        spawned = FakeProcess(pid=9100)
+
+        async def fake_spawn(*_args, **_kwargs):
+            return spawned
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_spawn)
+
+        started = await service.start_task(0, "Mac mini M4")
+        assert started is True
+        assert service.processes[0] is spawned
+
+    asyncio.run(run_scenario())
