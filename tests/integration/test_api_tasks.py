@@ -194,3 +194,26 @@ def test_delete_task_stops_runtime_and_keeps_task_ids_stable(
     assert process_service.stopped == [0]
     # 任务 ID 不允许漂移：删除任务后不得对运行时状态做整体重排
     assert not hasattr(process_service, "reindex_after_delete")
+
+
+def test_start_task_failure_surfaces_skip_reason(api_client, api_context, sample_task_payload):
+    """启动被失败保护跳过时，接口应返回真实原因而不是笼统的"启动任务失败"。"""
+    assert api_client.post("/api/tasks/", json=sample_task_payload).status_code == 200
+
+    process_service = api_context["process_service"]
+
+    async def fake_start(task_id: int, task_name: str) -> bool:
+        return False
+
+    process_service.start_task = fake_start
+    process_service.describe_last_skip = lambda name: (
+        "任务已被失败保护暂停：连续失败 3/3，暂停至 2026-09-23 08:00:00。"
+        "原因: Login required (cookies/state likely expired)。"
+    )
+
+    response = api_client.post("/api/tasks/start/0")
+
+    assert response.status_code == 500
+    detail = response.json()["detail"]
+    assert "失败保护暂停" in detail
+    assert "Login required" in detail

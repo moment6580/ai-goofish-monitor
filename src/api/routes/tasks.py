@@ -265,7 +265,9 @@ async def start_task(
         raise HTTPException(status_code=400, detail="任务已在运行中")
     success = await process_service.start_task(task_id, task.task_name)
     if not success:
-        raise HTTPException(status_code=500, detail="启动任务失败")
+        describe = getattr(process_service, "describe_last_skip", None)
+        detail = describe(task.task_name) if callable(describe) else None
+        raise HTTPException(status_code=500, detail=detail or "启动任务失败，请查看运行日志")
     return {"message": f"任务 '{task.task_name}' 已启动"}
 @router.post("/stop/{task_id}", response_model=dict)
 async def stop_task(

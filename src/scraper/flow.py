@@ -18,6 +18,7 @@ from typing import Optional
 from urllib.parse import urlencode
 
 from playwright.async_api import (
+    Error as PlaywrightError,
     TimeoutError as PlaywrightTimeoutError,
     async_playwright,
 )
@@ -305,9 +306,20 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
                 log_time("[反爬] 在首页停留，模拟浏览...")
                 await random_sleep(1, 2)
 
-                # 模拟随机滚动（移动设备的触摸滚动）
-                await page.evaluate("window.scrollBy(0, Math.random() * 500 + 200)")
+                # 首页在登录态失效/风控时可能发生跳转；滚动只是拟人化动作，
+                # 上下文被导航销毁时忽略，避免掩盖真正的登录失效问题。
+                try:
+                    await page.evaluate("window.scrollBy(0, Math.random() * 500 + 200)")
+                except PlaywrightError as exc:
+                    if "Execution context was destroyed" not in str(exc):
+                        raise
+                    print("LOG: 首页在滚动期间发生跳转（可能为登录态失效），跳过拟人滚动。")
                 await random_sleep(1, 2)
+
+                if _is_login_url(page.url):
+                    raise LoginRequiredError(
+                        f"Login required: redirected to {page.url} (cookies/state likely expired)"
+                    )
 
                 log_time("步骤 1 - 导航到搜索结果页...")
                 # 使用 'q' 参数构建正确的搜索URL，并进行URL编码

@@ -46,6 +46,7 @@ class ProcessService:
         self.task_names: Dict[int, str] = {}
         self.exit_watchers: Dict[int, asyncio.Task] = {}
         self.failure_guard = FailureGuard()
+        self.last_skip_decisions: Dict[str, object] = {}
         self._on_started: LifecycleHook | None = None
         self._on_stopped: LifecycleHook | None = None
 
@@ -157,6 +158,7 @@ class ProcessService:
             cookie_path=self._resolve_cookie_path(task_name),
         )
         if decision.skip:
+            self.last_skip_decisions[task_name] = decision
             await self._notify_skip(task_name, decision)
             return False
 
@@ -184,9 +186,26 @@ class ProcessService:
             return False
 
         self._register_runtime(task_id, task_name, process, log_file_path, log_file_handle)
+        self.last_skip_decisions.pop(task_name, None)
         print(f"启动任务 '{task_name}' (PID: {process.pid})")
         await self._invoke_hook(self._on_started, task_id)
         return True
+
+    def describe_last_skip(self, task_name: str) -> str | None:
+        """返回最近一次被跳过的原因描述（供 API 给出明确报错）。"""
+        decision = self.last_skip_decisions.get(task_name)
+        if decision is None or not getattr(decision, "skip", False):
+            return None
+        paused_until = getattr(decision, "paused_until", None)
+        paused_text = (
+            paused_until.strftime("%Y-%m-%d %H:%M:%S") if paused_until else "N/A"
+        )
+        return (
+            f"任务已被失败保护暂停：连续失败 "
+            f"{decision.consecutive_failures}/{self.failure_guard.threshold}，"
+            f"暂停至 {paused_text}。原因: {decision.reason}。"
+            "更新登录态/cookies 文件后会自动恢复。"
+        )
 
     async def _notify_skip(self, task_name: str, decision) -> None:
         print(

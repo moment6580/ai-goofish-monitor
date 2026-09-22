@@ -113,3 +113,34 @@ def test_start_task_allowed_below_cap(tmp_path, monkeypatch):
         assert service.processes[2] is spawned
 
     asyncio.run(run_scenario())
+
+
+def test_describe_last_skip_reports_pause_details(tmp_path, monkeypatch):
+    from datetime import datetime, timedelta
+
+    async def run_scenario():
+        service = _make_service(tmp_path, monkeypatch)
+        paused_until = datetime(2026, 9, 23, 8, 0, 0)
+        decision = SimpleNamespace(
+            skip=True,
+            should_notify=False,
+            reason="Login required: redirected to passport",
+            consecutive_failures=3,
+            paused_until=paused_until,
+        )
+        service.failure_guard.should_skip_start = lambda *args, **kwargs: decision
+
+        started = await service.start_task(0, "Mac mini M4")
+        assert started is False
+
+        description = service.describe_last_skip("Mac mini M4")
+        assert description is not None
+        assert "失败保护暂停" in description
+        assert "3/3" in description
+        assert "2026-09-23 08:00:00" in description
+        assert "Login required" in description
+
+        # 未知任务无描述
+        assert service.describe_last_skip("other-task") is None
+
+    asyncio.run(run_scenario())
